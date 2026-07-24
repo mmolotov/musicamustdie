@@ -987,7 +987,7 @@ function fallbackChordEvents(_config: GuitarConfig, chord: ChordDefinition): Pla
 
 export const guitarModule: InstrumentModule<GuitarConfig> = {
   id: 'electric-guitar',
-  label: 'Электрогитара',
+  label: 'Гитара',
   family: 'fretted-strings',
   capabilities: {
     fretboard: true,
