@@ -13,6 +13,11 @@ updates:
       semver-major-days: 30
       semver-minor-days: 7
       semver-patch-days: 3
+    # TypeScript 7 is the new native compiler; defer its major until
+    # typescript-eslint (peer "typescript <6.1.0") supports it.
+    ignore:
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
     # Batch minor/patch bumps into two PRs to cut noise; majors stay separate.
     groups:
       dev-dependencies:
