@@ -1,4 +1,4 @@
-# Quarto
+# musicamustdie
 
 [![CI](https://github.com/mmolotov/musicamustdie/actions/workflows/ci.yml/badge.svg)](https://github.com/mmolotov/musicamustdie/actions/workflows/ci.yml)
 

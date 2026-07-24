@@ -65,7 +65,7 @@ export default function App() {
     <div className="app-shell">
       <a className="skip-link" href="#details-panel">Перейти к информации о тональности</a>
       <header className="site-header">
-        <a href={import.meta.env.BASE_URL} className="brand" aria-label="Кварто — на главную">
+        <a href={import.meta.env.BASE_URL} className="brand" aria-label="musicamustdie — на главную">
           <span className="brand__mark" aria-hidden="true">
             <img
               src={`${import.meta.env.BASE_URL}quarto-logo.png`}
@@ -76,7 +76,7 @@ export default function App() {
             />
           </span>
           <span>
-            <strong>Кварто</strong>
+            <strong>musicamustdie</strong>
             <small>музыкальная карта</small>
           </span>
         </a>
@@ -251,24 +251,7 @@ export default function App() {
           </section>
         </div>
 
-        <section className="extension-note">
-          <div className="extension-note__icon" aria-hidden="true">＋</div>
-          <div>
-            <span className="eyebrow">Архитектура для развития</span>
-            <h2>Следом — бас и клавиши</h2>
-            <p>
-              Музыкальное ядро не зависит от грифа. Новые инструменты подключаются отдельным модулем:
-              бас переиспользует ладовую механику, а пианино получает собственную клавиатуру и аппликатуры.
-            </p>
-          </div>
-          <span className="extension-note__status">Предусмотрено</span>
-        </section>
       </main>
-
-      <footer>
-        <span>Кварто · теория становится формой</span>
-        <span>Все расчёты выполняются локально в браузере</span>
-      </footer>
     </div>
   )
 }
