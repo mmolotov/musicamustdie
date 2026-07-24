@@ -260,17 +260,9 @@ h4 {
 main {
   width: min(1760px, calc(100% - 48px));
   margin: 0 auto;
+  padding-top: clamp(32px, 4vw, 56px);
 }
 
-.intro {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
-  gap: 60px;
-  align-items: end;
-  padding: 58px 4px 44px;
-}
-
-.intro__kicker,
 .eyebrow {
   display: block;
   margin-bottom: 9px;
@@ -279,28 +271,6 @@ main {
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-}
-
-.intro h1 {
-  max-width: 880px;
-  margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(46px, 5.5vw, 82px);
-  font-weight: 500;
-  line-height: 0.97;
-}
-
-.intro h1 em {
-  color: var(--coral);
-  font-weight: 400;
-}
-
-.intro > p {
-  max-width: 520px;
-  margin: 0 0 6px;
-  color: #56615d;
-  font-size: clamp(18px, 1.5vw, 22px);
-  line-height: 1.6;
 }
 
 .main-layout {
@@ -1676,7 +1646,6 @@ footer {
 
 .brand small,
 .instrument-select,
-.intro > p,
 .circle-help,
 .details-title-row p,
 .pattern-chip span,
@@ -1738,18 +1707,11 @@ footer {
   background: #171b20;
 }
 
-.intro {
-  padding-top: 48px;
-  padding-bottom: 36px;
-}
-
-.intro__kicker,
 .eyebrow {
   color: var(--sage);
   text-shadow: 0 0 12px rgba(183, 255, 42, 0.2);
 }
 
-.intro h1,
 .details-title-row h2,
 .settings-panel__header h2,
 .extension-note h2 {
@@ -1757,18 +1719,6 @@ footer {
   font-weight: 900;
   letter-spacing: -0.065em;
   text-transform: uppercase;
-}
-
-.intro h1 {
-  font-size: clamp(44px, 5.2vw, 78px);
-  line-height: 0.91;
-}
-
-.intro h1 em {
-  color: var(--coral);
-  font-style: italic;
-  font-weight: 900;
-  text-shadow: 0 0 24px rgba(255, 60, 172, 0.28);
 }
 
 .circle-panel,
@@ -2326,21 +2276,6 @@ footer {
     font-size: 13px;
   }
 
-  .intro {
-    grid-template-columns: 1fr;
-    gap: 20px;
-    padding: 40px 0 30px;
-  }
-
-  .intro h1 {
-    min-width: 0;
-    font-size: clamp(38px, 11vw, 62px);
-    overflow-wrap: anywhere;
-  }
-
-  .intro > p {
-    font-size: 15px;
-  }
 
   .circle-panel {
     padding: 10px;

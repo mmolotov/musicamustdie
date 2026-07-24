@@ -113,17 +113,6 @@ export default function App() {
       </header>
 
       <main>
-        <section className="intro">
-          <div>
-            <span className="intro__kicker">Интерактивный справочник</span>
-            <h1>Увидеть тональность.<br /><em>Сыграть её целиком.</em></h1>
-          </div>
-          <p>
-            Выберите мажор или минор на круге — получите правильные ноты, весь гриф,
-            позиционные TAB и аккордовые аппликатуры под ваш строй.
-          </p>
-        </section>
-
         <div className="main-layout">
           <section className="circle-panel" aria-label="Выбор тональности">
             <CircleOfFifths
