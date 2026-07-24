@@ -7,6 +7,12 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 10
+    # Let a release settle before proposing an update (supply-chain safety).
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
     # Batch minor/patch bumps into two PRs to cut noise; majors stay separate.
     groups:
       dev-dependencies:
@@ -22,6 +28,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns: ['*']
