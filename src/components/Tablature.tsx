@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FretLocation, PlayableEvent } from '../instruments/types'
 import type { GuitarConfig } from '../instruments/guitar'
 import { formatOpenString } from '../instruments/guitar'
@@ -43,6 +43,7 @@ export function Tablature({
   showShifts = false,
 }: TablatureProps) {
   const [copied, setCopied] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const steps = useMemo(() => {
     const locationsById = new Map(locations.map((location) => [location.id, location]))
     return events.flatMap((event) => {
@@ -59,6 +60,32 @@ export function Tablature({
     })
   }, [events, locations])
   const textTab = useMemo(() => makeTextTab(config, steps), [config, steps])
+
+  // Keep the currently played tab column in view during playback.
+  useEffect(() => {
+    if (activeStepIndex === null || !scrollRef.current) return
+    const scroller = scrollRef.current
+    const cell = scroller.querySelector<HTMLElement>(`[data-tab-step="${activeStepIndex}"]`)
+    if (!cell || typeof scroller.scrollTo !== 'function') return
+
+    const cellBox = cell.getBoundingClientRect()
+    const scrollerBox = scroller.getBoundingClientRect()
+    const edgePadding = 52
+    const isOutside =
+      cellBox.left < scrollerBox.left + edgePadding ||
+      cellBox.right > scrollerBox.right - edgePadding
+    if (!isOutside) return
+
+    scroller.scrollTo({
+      left:
+        scroller.scrollLeft +
+        cellBox.left -
+        scrollerBox.left -
+        scroller.clientWidth / 2 +
+        cellBox.width / 2,
+      behavior: 'smooth',
+    })
+  }, [activeStepIndex])
 
   const copy = async () => {
     try {
@@ -81,7 +108,7 @@ export function Tablature({
           {copied ? 'Скопировано' : 'Копировать'}
         </button>
       </div>
-      <div className="tab-scroll" tabIndex={0} aria-label="Табулатура с горизонтальной прокруткой">
+      <div ref={scrollRef} className="tab-scroll" tabIndex={0} aria-label="Табулатура с горизонтальной прокруткой">
         <div
           className="tab-grid"
           style={{ gridTemplateColumns: `46px repeat(${steps.length}, minmax(24px, 1fr))` }}

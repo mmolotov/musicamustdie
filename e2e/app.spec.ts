@@ -107,3 +107,30 @@ test('мобильная версия не создаёт горизонталь
   expect(overflow).toBeLessThanOrEqual(1)
   await expect(page.getByRole('button', { name: 'Am минор' })).toBeVisible()
 })
+
+test('мобильная версия: гриф гаммы прокручивается вбок, а таб следует за воспроизведением', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/?section=scales')
+  await expect(page.getByRole('heading', { name: 'Библиотека аппликатур' })).toBeVisible()
+
+  await page.getByRole('tab', { name: /3NPS/ }).click()
+  await page.getByRole('radio', { name: '2 октавы' }).click()
+  await expect(page.getByText(/Маршрут: C → C → C/)).toBeVisible()
+
+  // Гриф в фокус-режиме должен прокручиваться по горизонтали, а не сжиматься.
+  const board = page.locator('.fretboard-scroll--focused')
+  await expect(board).toBeVisible()
+  const boardScrollable = await board.evaluate((el) => el.scrollWidth - el.clientWidth > 8)
+  expect(boardScrollable).toBe(true)
+
+  // Табулатура шире экрана и должна доскроллиться до играющей ноты.
+  const tab = page.locator('.tab-scroll')
+  const tabOverflows = await tab.evaluate((el) => el.scrollWidth - el.clientWidth > 8)
+  expect(tabOverflows).toBe(true)
+  const beforeScroll = await tab.evaluate((el) => el.scrollLeft)
+
+  await page.getByRole('button', { name: 'Сыграть маршрут вверх' }).click()
+  await expect
+    .poll(async () => tab.evaluate((el) => el.scrollLeft), { timeout: 12000 })
+    .toBeGreaterThan(beforeScroll + 8)
+})
