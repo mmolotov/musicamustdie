@@ -66,19 +66,14 @@ export default function App() {
       <a className="skip-link" href="#details-panel">Перейти к информации о тональности</a>
       <header className="site-header">
         <a href={import.meta.env.BASE_URL} className="brand" aria-label="musicamustdie — на главную">
-          <span className="brand__mark" aria-hidden="true">
-            <img
-              src={`${import.meta.env.BASE_URL}quarto-logo.png`}
-              width="768"
-              height="512"
-              alt=""
-              draggable="false"
-            />
-          </span>
-          <span>
-            <strong>musicamustdie</strong>
-            <small>музыкальная карта</small>
-          </span>
+          <img
+            className="brand__logo"
+            src={`${import.meta.env.BASE_URL}musicamustdie-logo.png`}
+            width="760"
+            height="237"
+            alt=""
+            draggable="false"
+          />
         </a>
         <div className="header-actions">
           {instruments.length > 1 ? (
