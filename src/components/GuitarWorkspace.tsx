@@ -266,6 +266,7 @@ function ScalesView({
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset of playback animation state when the selection changes
     clearPlaybackAnimation()
     return clearPlaybackAnimation
   }, [clearPlaybackAnimation, direction, selectedPattern?.id, selectedRoute?.id])

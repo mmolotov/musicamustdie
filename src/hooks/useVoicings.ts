@@ -26,6 +26,7 @@ export function useVoicings(request: GenerateVoicingsRequest | null): VoicingSta
 
   useEffect(() => {
     if (!request) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset when the request clears; the async worker/timeout paths set state in callbacks
       setState({ voicings: [], loading: false, error: null })
       return
     }
