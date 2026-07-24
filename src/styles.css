@@ -2954,3 +2954,24 @@ footer {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Mobile: the focused (Scales-tab) fretboard scrolls sideways at its natural
+   width and takes a bit less height, instead of squishing to fit the screen.
+   Placed last so these win over the base .fretboard--focused rules. */
+@media (max-width: 760px) {
+  .fretboard-scroll--focused {
+    overflow-x: auto;
+  }
+
+  .fretboard--focused {
+    width: auto;
+    min-width: 0;
+    height: 300px;
+  }
+}
+
+@media (max-width: 520px) {
+  .fretboard--focused {
+    height: 250px;
+  }
+}
