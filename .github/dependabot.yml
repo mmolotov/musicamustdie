@@ -35,6 +35,11 @@ updates:
       day: monday
     cooldown:
       default-days: 7
+    # Workflows pin floating major tags (e.g. @v7), which already pick up
+    # minor/patch releases; only surface new majors here.
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-minor, version-update:semver-patch]
     groups:
       actions:
         patterns: ['*']
