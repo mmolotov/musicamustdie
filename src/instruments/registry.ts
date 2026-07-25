@@ -4,7 +4,7 @@ const modules = new Map<string, InstrumentModule<unknown>>()
 
 export function registerInstrument<Config>(module: InstrumentModule<Config>): void {
   if (modules.has(module.id)) {
-    throw new Error(`Инструмент с id «${module.id}» уже зарегистрирован`)
+    throw new Error(`Instrument with id "${module.id}" is already registered`)
   }
   modules.set(module.id, module as InstrumentModule<unknown>)
 }

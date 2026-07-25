@@ -8,6 +8,10 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
+    // The UI auto-detects language from the browser; pin Russian so the
+    // suite's Russian-text assertions are stable. See i18n.spec.ts for the
+    // language switcher and English behaviour.
+    locale: 'ru-RU',
   },
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1 --port 4173',

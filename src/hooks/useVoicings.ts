@@ -4,11 +4,11 @@ import {
   type GenerateVoicingsRequest,
   type GuitarVoicing,
 } from '../instruments/guitar'
+import { pick } from '../i18n'
 
 interface WorkerResult {
   ok: boolean
   voicings?: GuitarVoicing[]
-  message?: string
 }
 
 interface VoicingState {
@@ -39,12 +39,8 @@ export function useVoicings(request: GenerateVoicingsRequest | null): VoicingSta
         if (cancelled) return
         try {
           setState({ voicings: generateVoicings(request), loading: false, error: null })
-        } catch (error) {
-          setState({
-            voicings: [],
-            loading: false,
-            error: error instanceof Error ? error.message : 'Не удалось построить аппликатуры',
-          })
+        } catch {
+          setState({ voicings: [], loading: false, error: pick('Не удалось построить аппликатуры', 'Could not build fingerings') })
         }
       }, 0)
       return () => {
@@ -61,16 +57,12 @@ export function useVoicings(request: GenerateVoicingsRequest | null): VoicingSta
       if (event.data.ok) {
         setState({ voicings: event.data.voicings ?? [], loading: false, error: null })
       } else {
-        setState({
-          voicings: [],
-          loading: false,
-          error: event.data.message ?? 'Не удалось построить аппликатуры',
-        })
+        setState({ voicings: [], loading: false, error: pick('Не удалось построить аппликатуры', 'Could not build fingerings') })
       }
     }
     worker.onerror = () => {
       if (!cancelled) {
-        setState({ voicings: [], loading: false, error: 'Ошибка фонового расчёта' })
+        setState({ voicings: [], loading: false, error: pick('Ошибка фонового расчёта', 'Background computation error') })
       }
     }
     worker.postMessage(request)

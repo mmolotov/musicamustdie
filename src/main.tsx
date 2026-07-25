@@ -11,7 +11,7 @@ replaceInstrument(guitarModule)
 registerInstrumentUi({ instrumentId: 'electric-guitar', Workspace: GuitarWorkspace })
 
 const root = document.getElementById('root')
-if (!root) throw new Error('Не найден корневой элемент приложения')
+if (!root) throw new Error('Application root element not found')
 
 createRoot(root).render(
   <StrictMode>

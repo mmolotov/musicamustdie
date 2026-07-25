@@ -3,9 +3,11 @@ import {
   DEFAULT_GUITAR_PREFERENCES,
   GUITAR_PRESETS,
   midiToOctave,
+  presetLabel,
   type GuitarPreferences,
 } from '../instruments/guitar'
 import { formatPitchClass, mod } from '../music/theory'
+import { useT } from '../i18n'
 
 interface GuitarSettingsProps {
   preferences: GuitarPreferences
@@ -16,6 +18,7 @@ interface GuitarSettingsProps {
 const PITCH_OPTIONS = Array.from({ length: 12 }, (_, pitchClass) => pitchClass)
 
 export function GuitarSettings({ preferences, onChange, onClose }: GuitarSettingsProps) {
+  const tr = useT()
   const { config } = preferences
 
   useEffect(() => {
@@ -66,17 +69,17 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
       >
         <div className="settings-panel__header">
           <div>
-            <span className="eyebrow">Инструмент</span>
-            <h2 id="settings-title">Настройка гитары</h2>
+            <span className="eyebrow">{tr('header.instrument')}</span>
+            <h2 id="settings-title">{tr('settings.title')}</h2>
           </div>
-          <button type="button" className="icon-button" aria-label="Закрыть настройки" onClick={onClose} autoFocus>
+          <button type="button" className="icon-button" aria-label={tr('settings.close')} onClick={onClose} autoFocus>
             ×
           </button>
         </div>
 
         <section className="settings-section">
-          <h3>Количество струн</h3>
-          <div className="segmented" aria-label="Количество струн">
+          <h3>{tr('settings.stringCount')}</h3>
+          <div className="segmented" aria-label={tr('settings.stringCount')}>
             {[6, 7, 8].map((count) => (
               <button
                 type="button"
@@ -91,17 +94,17 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
         </section>
 
         <section className="settings-section">
-          <label htmlFor="tuning-preset">Пресет строя</label>
+          <label htmlFor="tuning-preset">{tr('settings.tuningPreset')}</label>
           <select
             id="tuning-preset"
             value={config.presetId}
             onChange={(event) => choosePreset(event.target.value)}
           >
-            {config.presetId === 'custom' && <option value="custom">Ручной строй</option>}
+            {config.presetId === 'custom' && <option value="custom">{tr('settings.customTuning')}</option>}
             {GUITAR_PRESETS.filter((preset) => preset.strings.length === config.strings.length).map(
               (preset) => (
                 <option key={preset.id} value={preset.id}>
-                  {preset.label}
+                  {presetLabel(preset)}
                 </option>
               ),
             )}
@@ -109,8 +112,8 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
         </section>
 
         <section className="settings-section">
-          <h3>Открытые струны</h3>
-          <p className="settings-hint">Струна 1 — самая тонкая. Нота задаётся вместе с октавой.</p>
+          <h3>{tr('settings.openStrings')}</h3>
+          <p className="settings-hint">{tr('settings.openStringsHint')}</p>
           <div className="string-editor">
             {[...config.strings]
               .map((midi, stringIndex) => ({ midi, stringIndex }))
@@ -120,9 +123,9 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
                 const octave = midiToOctave(midi)
                 return (
                   <div className="string-editor__row" key={stringIndex}>
-                    <span>Струна {visualIndex + 1}</span>
+                    <span>{tr('settings.string', { n: visualIndex + 1 })}</span>
                     <select
-                      aria-label={`Нота струны ${visualIndex + 1}`}
+                      aria-label={tr('settings.stringNoteAria', { n: visualIndex + 1 })}
                       value={pitchClass}
                       onChange={(event) => updateString(stringIndex, Number(event.target.value), octave)}
                     >
@@ -133,7 +136,7 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
                       ))}
                     </select>
                     <select
-                      aria-label={`Октава струны ${visualIndex + 1}`}
+                      aria-label={tr('settings.stringOctaveAria', { n: visualIndex + 1 })}
                       value={octave}
                       onChange={(event) =>
                         updateString(stringIndex, pitchClass, Number(event.target.value))
@@ -153,7 +156,7 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
 
         <section className="settings-section settings-grid">
           <label>
-            <span>Ладов: {config.frets}</span>
+            <span>{tr('settings.frets', { n: config.frets })}</span>
             <input
               type="range"
               min="12"
@@ -166,7 +169,7 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
             />
           </label>
           <label>
-            <span>Ориентация</span>
+            <span>{tr('settings.orientation')}</span>
             <select
               value={config.handedness}
               onChange={(event) =>
@@ -176,70 +179,70 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
                 })
               }
             >
-              <option value="right">Праворукая</option>
-              <option value="left">Леворукая</option>
+              <option value="right">{tr('settings.rightHanded')}</option>
+              <option value="left">{tr('settings.leftHanded')}</option>
             </select>
           </label>
         </section>
 
         <section className="settings-section practice-settings">
           <div>
-            <h3>Подбор аппликатур</h3>
-            <p className="settings-hint">Профиль меняет порядок рекомендаций и оценку удобства, но не скрывает формы.</p>
+            <h3>{tr('settings.fingering')}</h3>
+            <p className="settings-hint">{tr('settings.fingeringHint')}</p>
           </div>
           <div className="practice-setting-row">
-            <span>Уровень</span>
-            <div className="segmented segmented--small" aria-label="Уровень игры">
+            <span>{tr('settings.level')}</span>
+            <div className="segmented segmented--small" aria-label={tr('settings.levelAria')}>
               {([
-                ['beginner', 'Начинаю'],
-                ['intermediate', 'Играю'],
-                ['advanced', 'Продвинутый'],
-              ] as const).map(([value, label]) => (
+                ['beginner', 'settings.level.beginner'],
+                ['intermediate', 'settings.level.intermediate'],
+                ['advanced', 'settings.level.advanced'],
+              ] as const).map(([value, key]) => (
                 <button
                   type="button"
                   key={value}
                   className={(preferences.playerLevel ?? 'intermediate') === value ? 'is-active' : ''}
                   onClick={() => onChange({ ...preferences, playerLevel: value })}
                 >
-                  {label}
+                  {tr(key)}
                 </button>
               ))}
             </div>
           </div>
           <div className="practice-setting-row">
-            <span>Размер руки</span>
-            <div className="segmented segmented--small" aria-label="Размер руки">
+            <span>{tr('settings.handSize')}</span>
+            <div className="segmented segmented--small" aria-label={tr('settings.handSize')}>
               {([
-                ['small', 'Малый'],
-                ['medium', 'Средний'],
-                ['large', 'Большой'],
-              ] as const).map(([value, label]) => (
+                ['small', 'settings.hand.small'],
+                ['medium', 'settings.hand.medium'],
+                ['large', 'settings.hand.large'],
+              ] as const).map(([value, key]) => (
                 <button
                   type="button"
                   key={value}
                   className={(preferences.handSize ?? 'medium') === value ? 'is-active' : ''}
                   onClick={() => onChange({ ...preferences, handSize: value })}
                 >
-                  {label}
+                  {tr(key)}
                 </button>
               ))}
             </div>
           </div>
           <div className="practice-setting-row">
-            <span>Предпочтение</span>
-            <div className="segmented segmented--small" aria-label="Предпочтение по растяжке">
+            <span>{tr('settings.reach')}</span>
+            <div className="segmented segmented--small" aria-label={tr('settings.reachAria')}>
               {([
-                ['compact', 'Компактно'],
-                ['balanced', 'Баланс'],
-                ['stretch', 'Растяжка'],
-              ] as const).map(([value, label]) => (
+                ['compact', 'settings.reach.compact'],
+                ['balanced', 'settings.reach.balanced'],
+                ['stretch', 'settings.reach.stretch'],
+              ] as const).map(([value, key]) => (
                 <button
                   type="button"
                   key={value}
                   className={(preferences.scaleReachProfile ?? 'balanced') === value ? 'is-active' : ''}
                   onClick={() => onChange({ ...preferences, scaleReachProfile: value })}
                 >
-                  {label}
+                  {tr(key)}
                 </button>
               ))}
             </div>
@@ -248,7 +251,7 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
 
         <section className="settings-section settings-grid">
           <label>
-            <span>Темп: {preferences.tempo} BPM</span>
+            <span>{tr('settings.tempo', { n: preferences.tempo })}</span>
             <input
               type="range"
               min="40"
@@ -258,7 +261,7 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
             />
           </label>
           <label>
-            <span>Громкость: {Math.round(preferences.volume * 100)}%</span>
+            <span>{tr('settings.volume', { n: Math.round(preferences.volume * 100) })}</span>
             <input
               type="range"
               min="0"
@@ -275,7 +278,7 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
           className="secondary-button settings-reset"
           onClick={() => onChange(structuredClone(DEFAULT_GUITAR_PREFERENCES))}
         >
-          Сбросить настройки
+          {tr('settings.reset')}
         </button>
       </aside>
     </div>

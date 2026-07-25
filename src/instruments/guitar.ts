@@ -10,6 +10,7 @@ import {
   CANONICAL_CAGED_TEMPLATES,
   CANONICAL_THREE_NPS_TEMPLATES,
 } from './guitarScaleTemplates'
+import { pick } from '../i18n'
 import {
   makeAllScalePatterns,
   standardSixStringOffset as findStandardSixStringOffset,
@@ -39,7 +40,7 @@ export interface GuitarConfig {
 
 export interface GuitarPreset {
   id: string
-  label: string
+  name: string
   strings: number[]
 }
 
@@ -110,15 +111,19 @@ export interface GuitarPreferences {
 }
 
 export const GUITAR_PRESETS: GuitarPreset[] = [
-  { id: '6-standard-e', label: '6 струн · E Standard', strings: [40, 45, 50, 55, 59, 64] },
-  { id: '6-drop-d', label: '6 струн · Drop D', strings: [38, 45, 50, 55, 59, 64] },
-  { id: '6-standard-d', label: '6 струн · D Standard', strings: [38, 43, 48, 53, 57, 62] },
-  { id: '6-drop-c', label: '6 струн · Drop C', strings: [36, 43, 48, 53, 57, 62] },
-  { id: '7-standard-b', label: '7 струн · B Standard', strings: [35, 40, 45, 50, 55, 59, 64] },
-  { id: '7-drop-a', label: '7 струн · Drop A', strings: [33, 40, 45, 50, 55, 59, 64] },
-  { id: '8-standard-fs', label: '8 струн · F♯ Standard', strings: [30, 35, 40, 45, 50, 55, 59, 64] },
-  { id: '8-drop-e', label: '8 струн · Drop E', strings: [28, 35, 40, 45, 50, 55, 59, 64] },
+  { id: '6-standard-e', name: 'E Standard', strings: [40, 45, 50, 55, 59, 64] },
+  { id: '6-drop-d', name: 'Drop D', strings: [38, 45, 50, 55, 59, 64] },
+  { id: '6-standard-d', name: 'D Standard', strings: [38, 43, 48, 53, 57, 62] },
+  { id: '6-drop-c', name: 'Drop C', strings: [36, 43, 48, 53, 57, 62] },
+  { id: '7-standard-b', name: 'B Standard', strings: [35, 40, 45, 50, 55, 59, 64] },
+  { id: '7-drop-a', name: 'Drop A', strings: [33, 40, 45, 50, 55, 59, 64] },
+  { id: '8-standard-fs', name: 'F♯ Standard', strings: [30, 35, 40, 45, 50, 55, 59, 64] },
+  { id: '8-drop-e', name: 'Drop E', strings: [28, 35, 40, 45, 50, 55, 59, 64] },
 ]
+
+export function presetLabel(preset: GuitarPreset): string {
+  return `${preset.strings.length} ${pick('струн', 'strings')} · ${preset.name}`
+}
 
 export const DEFAULT_GUITAR_CONFIG: GuitarConfig = {
   strings: [...(GUITAR_PRESETS[0]?.strings ?? [40, 45, 50, 55, 59, 64])],
@@ -427,8 +432,8 @@ export function generateCanonicalCagedPatterns(
 
     return [{
       id: `canonical-caged-${template.id}-${candidate.startFret}`,
-      name: `Форма ${template.name}`,
-      description: 'Классический компактный CAGED-box',
+      name: pick(`Форма ${template.name}`, `Shape ${template.name}`),
+      description: pick('Классический компактный CAGED-box', 'Classic compact CAGED box'),
       system: 'caged',
       locations: candidate.locations,
       ascending: eventsFromPath(candidate.tonicPath),
@@ -436,7 +441,7 @@ export function generateCanonicalCagedPatterns(
       startPosition: candidate.startFret,
       endPosition: candidate.endFret,
       origin: 'canonical',
-      tags: ['Популярная', 'Компактная', 'CAGED box'],
+      tags: [pick('Популярная', 'Popular'), pick('Компактная', 'Compact'), 'CAGED box'],
     }]
   })
 }
@@ -503,8 +508,8 @@ export function generateCanonicalThreeNpsPatterns(
 
     return [{
       id: `canonical-3nps-${template.id}-${candidate.startFret}`,
-      name: `Позиция ${template.position} · ${degreeNote.symbol}`,
-      description: 'Классическая последовательная 3NPS-форма',
+      name: pick(`Позиция ${template.position} · ${degreeNote.symbol}`, `Position ${template.position} · ${degreeNote.symbol}`),
+      description: pick('Классическая последовательная 3NPS-форма', 'Classic sequential 3NPS shape'),
       system: '3nps',
       locations: candidate.locations,
       ascending: eventsFromPath(candidate.tonicPath),
@@ -512,7 +517,7 @@ export function generateCanonicalThreeNpsPatterns(
       startPosition: candidate.startFret,
       endPosition: candidate.endFret,
       origin: 'canonical',
-      tags: ['Популярная', '3 ноты/струна', 'Последовательная'],
+      tags: [pick('Популярная', 'Popular'), pick('3 ноты/струна', '3 notes/string'), pick('Последовательная', 'Sequential')],
     }]
   })
 }
@@ -548,8 +553,11 @@ export function generateCagedPatterns(
     if (![notes.length + 1, notes.length * 2 + 1].includes(tonicPath.length)) return []
     return [{
       id: `caged-${spec.name.toLowerCase()}-${startFret}`,
-      name: `Форма ${spec.name}`,
-      description: `Расширенная CAGED-позиция ${startFret === 0 ? 'у порожка' : `от ${startFret} лада`}`,
+      name: pick(`Форма ${spec.name}`, `Shape ${spec.name}`),
+      description: pick(
+        `Расширенная CAGED-позиция ${startFret === 0 ? 'у порожка' : `от ${startFret} лада`}`,
+        `Extended CAGED position ${startFret === 0 ? 'at the nut' : `from fret ${startFret}`}`,
+      ),
       system: 'caged',
       locations,
       ascending: eventsFromPath(tonicPath),
@@ -557,7 +565,7 @@ export function generateCagedPatterns(
       startPosition: startFret,
       endPosition: endFret,
       origin: 'generated',
-      tags: ['Сгенерированная', 'Две октавы', 'Динамический диапазон'],
+      tags: [pick('Сгенерированная', 'Generated'), pick('Две октавы', 'Two octaves'), pick('Динамический диапазон', 'Dynamic range')],
     }]
   })
 }
@@ -766,8 +774,11 @@ export function generateThreeNpsPatterns(
     return [
       {
         id: `3nps-${degreeIndex + 1}-${best.startFret}`,
-        name: `Позиция ${degreeIndex + 1} · ${degreeNote.symbol}`,
-        description: `Динамическая 3NPS-форма, ${best.startFret}–${best.endFret} лады`,
+        name: pick(`Позиция ${degreeIndex + 1} · ${degreeNote.symbol}`, `Position ${degreeIndex + 1} · ${degreeNote.symbol}`),
+        description: pick(
+          `Динамическая 3NPS-форма, ${best.startFret}–${best.endFret} лады`,
+          `Dynamic 3NPS shape, frets ${best.startFret}–${best.endFret}`,
+        ),
         system: '3nps',
         locations: best.locations,
         ascending: eventsFromPath(tonicPath),
@@ -775,7 +786,7 @@ export function generateThreeNpsPatterns(
         startPosition: best.startFret,
         endPosition: best.endFret,
         origin: 'generated',
-        tags: ['Сгенерированная', '3 ноты/струна', 'Динамический диапазон'],
+        tags: [pick('Сгенерированная', 'Generated'), pick('3 ноты/струна', '3 notes/string'), pick('Динамический диапазон', 'Dynamic range')],
       },
     ]
   })
@@ -857,10 +868,10 @@ function assignFingers(frets: number[], allowBarre: boolean): FingeringResult {
 
 function inversionLabel(chord: ChordDefinition, bassPitchClass: number): string {
   const index = chord.pitchClasses.indexOf(bassPitchClass)
-  if (index <= 0) return 'Основной вид'
-  if (index === 1) return '1-е обращение'
-  if (index === 2) return '2-е обращение'
-  return '3-е обращение'
+  if (index <= 0) return pick('Основной вид', 'Root position')
+  if (index === 1) return pick('1-е обращение', '1st inversion')
+  if (index === 2) return pick('2-е обращение', '2nd inversion')
+  return pick('3-е обращение', '3rd inversion')
 }
 
 function scoreVoicing(
@@ -987,7 +998,9 @@ function fallbackChordEvents(_config: GuitarConfig, chord: ChordDefinition): Pla
 
 export const guitarModule: InstrumentModule<GuitarConfig> = {
   id: 'electric-guitar',
-  label: 'Гитара',
+  get label() {
+    return pick('Гитара', 'Guitar')
+  },
   family: 'fretted-strings',
   capabilities: {
     fretboard: true,

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react'
 import type { FretLocation, PlayableEvent } from '../instruments/types'
 import type { FretboardLabelMode, GuitarConfig } from '../instruments/guitar'
 import { formatOpenString } from '../instruments/guitar'
+import { useT } from '../i18n'
 
 interface FretboardViewport {
   fromFret: number
@@ -39,6 +40,7 @@ export function Fretboard({
   showFingerings = false,
   showShifts = false,
 }: FretboardProps) {
+  const tr = useT()
   const scrollRef = useRef<HTMLDivElement>(null)
   const viewFrom = Math.max(0, Math.min(viewport?.fromFret ?? 0, config.frets))
   const viewTo = Math.max(viewFrom, Math.min(viewport?.toFret ?? config.frets, config.frets))
@@ -123,7 +125,7 @@ export function Fretboard({
       ref={scrollRef}
       className={`fretboard-scroll${focused ? ' fretboard-scroll--focused' : ''}`}
       tabIndex={0}
-      aria-label="Интерактивная карта грифа"
+      aria-label={tr('fretboard.mapAria')}
     >
       <svg
         className={`fretboard${focused ? ' fretboard--focused' : ''}`}
@@ -131,7 +133,7 @@ export function Fretboard({
         height={height + 28}
         viewBox={`0 0 ${width} ${height + 28}`}
         role="group"
-        aria-label={`Гриф: ${config.strings.length} струн, лады ${viewFrom}–${viewTo}`}
+        aria-label={tr('fretboard.boardAria', { strings: config.strings.length, from: viewFrom, to: viewTo })}
       >
         <rect
           x={boardLeft}
@@ -216,7 +218,12 @@ export function Fretboard({
               data-finger={showFingerings && finger ? finger : undefined}
               role="button"
               tabIndex={0}
-              aria-label={`${location.note.accessibleName}, ${config.strings.length - location.stringIndex} струна, ${location.fret} лад${finger ? `, палец ${finger}` : ''}. Воспроизвести.`}
+              aria-label={tr('fretboard.noteAria', {
+                note: location.note.accessibleName,
+                stringNumber: config.strings.length - location.stringIndex,
+                fret: location.fret,
+                finger: finger ? tr('fretboard.fingerSuffix', { n: finger }) : '',
+              })}
               className={`fret-note${root ? ' is-root' : ''}${isPlaying ? ' is-playing' : ''}${isContext ? ' is-context' : ''}${isOnRoute ? ' is-route' : ''}${hasShift ? ' has-shift' : ''}`}
               onClick={() => onPlayNote(location.midi)}
               onKeyDown={(event) => handleMarkerKey(event, location.midi)}
@@ -237,7 +244,13 @@ export function Fretboard({
                   <text x={x + markerRadius - 1} y={y - markerRadius + 4} textAnchor="middle">{finger}</text>
                 </g>
               )}
-              <title>{`${location.note.symbol} · ${location.note.solfege} · ${location.fret} лад${finger ? ` · палец ${finger}` : ''}${hasShift ? ' · смена позиции' : ''}`}</title>
+              <title>{tr('fretboard.title', {
+                note: location.note.symbol,
+                solfege: location.note.solfege,
+                fret: location.fret,
+                finger: finger ? tr('fretboard.titleFinger', { n: finger }) : '',
+                shift: hasShift ? ` · ${tr('fretboard.shift')}` : '',
+              })}</title>
             </g>
           )
         })}

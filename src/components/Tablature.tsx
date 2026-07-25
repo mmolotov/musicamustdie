@@ -3,6 +3,7 @@ import type { FretLocation, PlayableEvent } from '../instruments/types'
 import type { GuitarConfig } from '../instruments/guitar'
 import { formatOpenString } from '../instruments/guitar'
 import type { ScaleDirection } from '../music/types'
+import { useT } from '../i18n'
 
 interface TablatureProps {
   config: GuitarConfig
@@ -42,6 +43,7 @@ export function Tablature({
   showFingerings = false,
   showShifts = false,
 }: TablatureProps) {
+  const tr = useT()
   const [copied, setCopied] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const steps = useMemo(() => {
@@ -102,13 +104,13 @@ export function Tablature({
       <div className="tab-card__header">
         <div>
           <span className="eyebrow">TAB</span>
-          <strong>{direction === 'ascending' ? 'Восходящая' : 'Нисходящая'}</strong>
+          <strong>{direction === 'ascending' ? tr('tab.ascending') : tr('tab.descending')}</strong>
         </div>
         <button type="button" className="text-button" onClick={() => void copy()}>
-          {copied ? 'Скопировано' : 'Копировать'}
+          {copied ? tr('tab.copied') : tr('tab.copy')}
         </button>
       </div>
-      <div ref={scrollRef} className="tab-scroll" tabIndex={0} aria-label="Табулатура с горизонтальной прокруткой">
+      <div ref={scrollRef} className="tab-scroll" tabIndex={0} aria-label={tr('tab.scrollAria')}>
         <div
           className="tab-grid"
           style={{ gridTemplateColumns: `46px repeat(${steps.length}, minmax(24px, 1fr))` }}
@@ -131,7 +133,7 @@ export function Tablature({
                   <span>
                     {step.stringIndex === stringIndex ? step.fret : ''}
                     {showFingerings && step.stringIndex === stringIndex && step.finger && (
-                      <small aria-label={`палец ${step.finger}`}>{step.finger}</small>
+                      <small aria-label={tr('tab.fingerAria', { n: step.finger })}>{step.finger}</small>
                     )}
                   </span>
                 </div>

@@ -14,6 +14,7 @@ import type {
   ScaleNote,
   SpelledNote,
 } from './types'
+import { getLang, type Lang } from '../i18n'
 
 export const CIRCLE_MAJOR_PITCHES = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5] as const
 
@@ -29,14 +30,10 @@ const NATURAL_PITCHES: Record<LetterName, number> = {
   A: 9,
   B: 11,
 }
-const SOLFEGE: Record<LetterName, string> = {
-  C: 'До',
-  D: 'Ре',
-  E: 'Ми',
-  F: 'Фа',
-  G: 'Соль',
-  A: 'Ля',
-  B: 'Си',
+// English uses letter names for note spelling; Russian uses solfège.
+const SOLFEGE: Record<Lang, Record<LetterName, string>> = {
+  ru: { C: 'До', D: 'Ре', E: 'Ми', F: 'Фа', G: 'Соль', A: 'Ля', B: 'Си' },
+  en: { C: 'C', D: 'D', E: 'E', F: 'F', G: 'G', A: 'A', B: 'B' },
 }
 
 interface TonicSpec {
@@ -82,27 +79,57 @@ const SCALE_INTERVALS: Record<'major' | MinorVariant, number[]> = {
   'melodic-jazz': [0, 2, 3, 5, 7, 9, 11],
 }
 
-const SCALE_LABELS: Record<'major' | MinorVariant, { label: string; short: string }> = {
-  major: { label: 'мажор', short: 'мажор' },
-  natural: { label: 'натуральный минор', short: 'нат. минор' },
-  harmonic: { label: 'гармонический минор', short: 'гарм. минор' },
-  'melodic-classical': { label: 'классический мелодический минор', short: 'класс. мел. минор' },
-  'melodic-jazz': { label: 'джазовый мелодический минор', short: 'джаз. мел. минор' },
+const SCALE_LABELS: Record<Lang, Record<'major' | MinorVariant, { label: string; short: string }>> = {
+  ru: {
+    major: { label: 'мажор', short: 'мажор' },
+    natural: { label: 'натуральный минор', short: 'нат. минор' },
+    harmonic: { label: 'гармонический минор', short: 'гарм. минор' },
+    'melodic-classical': { label: 'классический мелодический минор', short: 'класс. мел. минор' },
+    'melodic-jazz': { label: 'джазовый мелодический минор', short: 'джаз. мел. минор' },
+  },
+  en: {
+    major: { label: 'major', short: 'major' },
+    natural: { label: 'natural minor', short: 'nat. minor' },
+    harmonic: { label: 'harmonic minor', short: 'harm. minor' },
+    'melodic-classical': { label: 'classical melodic minor', short: 'class. mel. minor' },
+    'melodic-jazz': { label: 'jazz melodic minor', short: 'jazz mel. minor' },
+  },
 }
 
-const QUALITY_LABELS: Record<ChordQuality, string> = {
-  major: 'мажорное трезвучие',
-  minor: 'минорное трезвучие',
-  diminished: 'уменьшённое трезвучие',
-  augmented: 'увеличенное трезвучие',
-  'major-seventh': 'большой мажорный септаккорд',
-  'dominant-seventh': 'доминантсептаккорд',
-  'minor-seventh': 'малый минорный септаккорд',
-  'half-diminished-seventh': 'полууменьшённый септаккорд',
-  'diminished-seventh': 'уменьшённый септаккорд',
-  'minor-major-seventh': 'минорный септаккорд с большой септимой',
-  'augmented-major-seventh': 'увеличенный септаккорд с большой септимой',
-  other: 'аккорд',
+const QUALITY_LABELS: Record<Lang, Record<ChordQuality, string>> = {
+  ru: {
+    major: 'мажорное трезвучие',
+    minor: 'минорное трезвучие',
+    diminished: 'уменьшённое трезвучие',
+    augmented: 'увеличенное трезвучие',
+    'major-seventh': 'большой мажорный септаккорд',
+    'dominant-seventh': 'доминантсептаккорд',
+    'minor-seventh': 'малый минорный септаккорд',
+    'half-diminished-seventh': 'полууменьшённый септаккорд',
+    'diminished-seventh': 'уменьшённый септаккорд',
+    'minor-major-seventh': 'минорный септаккорд с большой септимой',
+    'augmented-major-seventh': 'увеличенный септаккорд с большой септимой',
+    other: 'аккорд',
+  },
+  en: {
+    major: 'major triad',
+    minor: 'minor triad',
+    diminished: 'diminished triad',
+    augmented: 'augmented triad',
+    'major-seventh': 'major seventh chord',
+    'dominant-seventh': 'dominant seventh chord',
+    'minor-seventh': 'minor seventh chord',
+    'half-diminished-seventh': 'half-diminished seventh chord',
+    'diminished-seventh': 'diminished seventh chord',
+    'minor-major-seventh': 'minor-major seventh chord',
+    'augmented-major-seventh': 'augmented-major seventh chord',
+    other: 'chord',
+  },
+}
+
+const ACCIDENTAL_WORDS: Record<Lang, Record<number, string>> = {
+  ru: { [-2]: ' дубль-бемоль', [-1]: ' бемоль', 1: ' диез', 2: ' дубль-диез' },
+  en: { [-2]: ' double flat', [-1]: ' flat', 1: ' sharp', 2: ' double sharp' },
 }
 
 export function mod(value: number, modulus = 12): number {
@@ -118,11 +145,7 @@ export function accidentalGlyph(accidental: number): string {
 }
 
 function accidentalWord(accidental: number): string {
-  if (accidental === -2) return ' дубль-бемоль'
-  if (accidental === -1) return ' бемоль'
-  if (accidental === 1) return ' диез'
-  if (accidental === 2) return ' дубль-диез'
-  return ''
+  return ACCIDENTAL_WORDS[getLang()][accidental] ?? ''
 }
 
 function tonicSpec(selection: KeySelection): TonicSpec {
@@ -135,12 +158,13 @@ function tonicSpec(selection: KeySelection): TonicSpec {
 function toSpelledNote(spec: TonicSpec, pitchClass?: number): SpelledNote {
   const resolvedPitch = pitchClass ?? mod(NATURAL_PITCHES[spec.letter] + spec.accidental)
   const glyph = accidentalGlyph(spec.accidental)
+  const noteName = SOLFEGE[getLang()][spec.letter]
   return {
     ...spec,
     pitchClass: resolvedPitch,
     symbol: `${spec.letter}${glyph}`,
-    solfege: `${SOLFEGE[spec.letter]}${glyph}`,
-    accessibleName: `${SOLFEGE[spec.letter]}${accidentalWord(spec.accidental)}`,
+    solfege: `${noteName}${glyph}`,
+    accessibleName: `${noteName}${accidentalWord(spec.accidental)}`,
   }
 }
 
@@ -171,12 +195,19 @@ export function spellScale(selection: KeySelection, intervals: number[]): ScaleN
   })
 }
 
+function stepWord(step: number): string {
+  const en = getLang() === 'en'
+  if (step === 2) return en ? 'tone' : 'тон'
+  if (step === 1) return en ? 'semitone' : 'полутон'
+  return en ? `${step} st` : `${step} пт.`
+}
+
 function formulaFor(intervals: number[]): string {
   return intervals
     .slice(1)
     .map((interval, index) => interval - (intervals[index] ?? 0))
     .concat(12 - (intervals.at(-1) ?? 0))
-    .map((step) => (step === 2 ? 'тон' : step === 1 ? 'полутон' : `${step} пт.`))
+    .map(stepWord)
     .join(' · ')
 }
 
@@ -188,7 +219,7 @@ export function buildScale(
   const ascendingIntervals = SCALE_INTERVALS[id]
   const descendingIntervals =
     id === 'melodic-classical' ? SCALE_INTERVALS.natural : ascendingIntervals
-  const label = SCALE_LABELS[id]
+  const label = SCALE_LABELS[getLang()][id]
 
   return {
     id,
@@ -280,7 +311,7 @@ function makeChord(scaleNotes: ScaleNote[], degreeIndex: number, size: ChordSize
   }).filter((note): note is ScaleNote => Boolean(note))
   const quality = chordQuality(notes)
   const root = notes[0] ?? scaleNotes[0]
-  if (!root) throw new Error('Нельзя построить аккорд из пустой гаммы')
+  if (!root) throw new Error('Cannot build a chord from an empty scale')
 
   return {
     degree: degreeIndex + 1,
@@ -290,7 +321,7 @@ function makeChord(scaleNotes: ScaleNote[], degreeIndex: number, size: ChordSize
     pitchClasses: notes.map((note) => note.pitchClass),
     requiredPitchClasses: requiredTones(notes, quality),
     quality,
-    qualityLabel: QUALITY_LABELS[quality],
+    qualityLabel: QUALITY_LABELS[getLang()][quality],
     symbol: `${root.symbol}${qualitySuffix(quality)}`,
     roman: romanFor(degreeIndex + 1, quality, size),
   }
@@ -329,8 +360,26 @@ export function circleTonicLabel(
 
 export function keyDisplayName(selection: KeySelection): string {
   const tonic = getTonicNote(selection)
+  if (getLang() === 'en') {
+    return `${tonic.symbol} ${selection.mode === 'major' ? 'major' : 'minor'}`
+  }
   const modeLabel = selection.mode === 'major' ? 'мажор' : 'минор'
   return `${tonic.symbol} · ${tonic.solfege} ${modeLabel}`
+}
+
+function pluralizeRu(count: number, one: string, few: string, many: string): string {
+  if (count % 10 === 1 && count % 100 !== 11) return one
+  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return few
+  return many
+}
+
+function accidentalCountLabel(count: number, kind: 'sharp' | 'flat'): string {
+  if (getLang() === 'en') {
+    return `${count} ${kind}${count === 1 ? '' : 's'}`
+  }
+  const forms: [string, string, string] =
+    kind === 'sharp' ? ['диез', 'диеза', 'диезов'] : ['бемоль', 'бемоля', 'бемолей']
+  return `${count} ${pluralizeRu(count, forms[0], forms[1], forms[2])}`
 }
 
 export function getKeySignature(selection: KeySelection): KeySignature {
@@ -339,27 +388,13 @@ export function getKeySignature(selection: KeySelection): KeySignature {
   const sharps = notes.reduce((sum, note) => sum + Math.max(0, note.accidental), 0)
   const flats = notes.reduce((sum, note) => sum + Math.max(0, -note.accidental), 0)
 
-  const pluralize = (count: number, one: string, few: string, many: string) => {
-    if (count % 10 === 1 && count % 100 !== 11) return one
-    if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return few
-    return many
-  }
-
   if (sharps > 0) {
-    return {
-      count: sharps,
-      accidental: 'sharp',
-      label: `${sharps} ${pluralize(sharps, 'диез', 'диеза', 'диезов')}`,
-    }
+    return { count: sharps, accidental: 'sharp', label: accidentalCountLabel(sharps, 'sharp') }
   }
   if (flats > 0) {
-    return {
-      count: flats,
-      accidental: 'flat',
-      label: `${flats} ${pluralize(flats, 'бемоль', 'бемоля', 'бемолей')}`,
-    }
+    return { count: flats, accidental: 'flat', label: accidentalCountLabel(flats, 'flat') }
   }
-  return { count: 0, accidental: 'natural', label: 'без знаков' }
+  return { count: 0, accidental: 'natural', label: getLang() === 'en' ? 'no accidentals' : 'без знаков' }
 }
 
 export function formatPitchClass(pitchClass: number, preference: AccidentalPreference): string {

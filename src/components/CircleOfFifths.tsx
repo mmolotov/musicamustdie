@@ -7,9 +7,9 @@ import {
   getKeySignature,
   getRelativeMajorPitch,
   getRelativeMinorPitch,
-  keyDisplayName,
   mod,
 } from '../music/theory'
+import { useT } from '../i18n'
 
 interface CircleOfFifthsProps {
   selection: KeySelection
@@ -73,6 +73,7 @@ function minorSectorLabel(majorPitch: number): string {
 }
 
 export function CircleOfFifths({ selection, onSelect }: CircleOfFifthsProps) {
+  const tr = useT()
   const selectedMajorPitch =
     selection.mode === 'major' ? selection.tonic : getRelativeMajorPitch(selection.tonic)
   const signature = getKeySignature(selection)
@@ -108,16 +109,16 @@ export function CircleOfFifths({ selection, onSelect }: CircleOfFifthsProps) {
   return (
     <div className="circle-shell">
       <div className="circle-direction circle-direction--left">
-        <span aria-hidden="true">←</span> кварты · бемоли
+        <span aria-hidden="true">←</span> {tr('circle.left')}
       </div>
       <div className="circle-direction circle-direction--right">
-        квинты · диезы <span aria-hidden="true">→</span>
+        {tr('circle.right')} <span aria-hidden="true">→</span>
       </div>
       <svg
         className="fifths-circle"
         viewBox="0 0 600 600"
         role="group"
-        aria-label="Кварто-квинтовый круг. Внешнее кольцо — мажор, внутреннее — минор."
+        aria-label={tr('circle.aria')}
       >
         <defs>
           <filter id="circle-shadow" x="-20%" y="-20%" width="140%" height="140%">
@@ -142,7 +143,7 @@ export function CircleOfFifths({ selection, onSelect }: CircleOfFifthsProps) {
               <g
                 role="button"
                 tabIndex={0}
-                aria-label={`${majorSectorLabel(majorPitch)} мажор`}
+                aria-label={tr('circle.majorAria', { note: majorSectorLabel(majorPitch) })}
                 aria-pressed={outerSelected}
                 onClick={() => selectSector(majorPitch, 'major')}
                 onKeyDown={(event) => handleKeyDown(event, index, 'major')}
@@ -169,13 +170,13 @@ export function CircleOfFifths({ selection, onSelect }: CircleOfFifthsProps) {
                   className="circle-label circle-label--mode"
                   aria-hidden="true"
                 >
-                  мажор
+                  {tr('circle.major')}
                 </text>
               </g>
               <g
                 role="button"
                 tabIndex={0}
-                aria-label={`${minorSectorLabel(majorPitch)} минор`}
+                aria-label={tr('circle.minorAria', { note: minorSectorLabel(majorPitch) })}
                 aria-pressed={innerSelected}
                 onClick={() => selectSector(majorPitch, 'minor')}
                 onKeyDown={(event) => handleKeyDown(event, index, 'minor')}
@@ -201,19 +202,19 @@ export function CircleOfFifths({ selection, onSelect }: CircleOfFifthsProps) {
         })}
         <circle cx="300" cy="300" r="101" className="circle-center" />
         <text x="300" y="266" textAnchor="middle" className="circle-center__eyebrow">
-          выбрана тональность
+          {tr('circle.selectedKey')}
         </text>
         <text x="300" y="305" textAnchor="middle" className="circle-center__key">
-          {keyDisplayName(selection).split(' · ')[0]}
+          {circleTonicLabel(selection.tonic, selection.mode, selection.spelling)}
         </text>
         <text x="300" y="331" textAnchor="middle" className="circle-center__mode">
-          {selection.mode === 'major' ? 'мажор' : 'минор'}
+          {selection.mode === 'major' ? tr('circle.major') : tr('circle.minor')}
         </text>
         <text x="300" y="356" textAnchor="middle" className="circle-center__signature">
           {signature.label}
         </text>
       </svg>
-      <p className="circle-help">Нажмите внешнюю часть для мажора, внутреннюю — для минора</p>
+      <p className="circle-help">{tr('circle.help')}</p>
     </div>
   )
 }

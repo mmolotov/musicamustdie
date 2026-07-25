@@ -1,5 +1,6 @@
 import type { ScaleNote } from '../music/types'
 import { mod } from '../music/theory'
+import { getLang, pick } from '../i18n'
 import type { GuitarConfig, ScaleGenerationOptions } from './guitar'
 import {
   CANONICAL_CAGED_TEMPLATES,
@@ -25,6 +26,21 @@ const DEFAULT_OPTIONS: ScaleGenerationOptions = {
   reachProfile: 'balanced',
   playerLevel: 'intermediate',
   handSize: 'medium',
+}
+
+// Octave count with the right word: RU pluralizes (октава/октавы), EN adds -s.
+function octaveLabel(count: number): string {
+  if (getLang() === 'en') return `${count} octave${count === 1 ? '' : 's'}`
+  return `${count} ${count === 1 ? 'октава' : 'октавы'}`
+}
+
+// Nth-string label, e.g. "6-й струны" (RU) / "6th string" (EN).
+function stringOrdinal(n: number): string {
+  if (getLang() === 'en') {
+    const suffix = n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'
+    return `${n}${suffix} string`
+  }
+  return `${n}-я струна`
 }
 
 type DetectedScaleFamily = 'major' | 'natural-minor' | 'harmonic-minor' | 'melodic-minor' | 'other'
@@ -389,7 +405,7 @@ function makeRoutes(
 ): { routes: PatternRoute[]; defaultRouteId: string } {
   const routes: PatternRoute[] = []
   if (includeFullRoute) {
-    routes.push(makeRoute('full-shape', 'Вся форма', 'full-shape', fullShapePath(locations), options))
+    routes.push(makeRoute('full-shape', pick('Вся форма', 'Full shape'), 'full-shape', fullShapePath(locations), options))
   }
   for (const octaves of [1, 2, 3]) {
     if (!preferredOctaves.includes(octaves)) continue
@@ -398,7 +414,7 @@ function makeRoutes(
     const kind = `tonic-${octaves}oct` as PatternRouteKind
     routes.push(makeRoute(
       kind,
-      `${octaves} ${octaves === 1 ? 'октава' : 'октавы'}`,
+      octaveLabel(octaves),
       kind,
       path,
       options,
@@ -817,19 +833,25 @@ export function makeCanonicalCagedPatterns(
     const locations = realizeStepGrid(config, notes, stringOffset, template.steps)
     const pattern = buildPattern({
       id: `caged-${template.id}-${Math.min(...locations.map((location) => location.fret))}`,
-      name: `Форма ${template.name}`,
+      name: pick(`Форма ${template.name}`, `Shape ${template.name}`),
       description: isMajor
-        ? `Классическая CAGED-карта, связанная с аккордовой формой ${template.name}`
-        : `Минорная карта по контуру CAGED ${template.name}; ступени пересчитаны для выбранного вида минора`,
+        ? pick(
+            `Классическая CAGED-карта, связанная с аккордовой формой ${template.name}`,
+            `Classic CAGED map tied to the ${template.name} chord shape`,
+          )
+        : pick(
+            `Минорная карта по контуру CAGED ${template.name}; ступени пересчитаны для выбранного вида минора`,
+            `Minor map along the CAGED ${template.name} contour; degrees recomputed for the selected minor type`,
+          ),
       family: 'caged',
       locations,
       notes,
       origin: 'canonical',
       tags: [
         'CAGED',
-        isMajor ? 'Аккордовая опора' : 'Минорная геометрия',
-        templateIndex === 3 ? 'Тоника на 6-й струне' : 'Переносимая',
-        ...(['harmonic-minor', 'melodic-minor'].includes(scaleFamily) ? ['Контроль растяжки'] : []),
+        isMajor ? pick('Аккордовая опора', 'Chord anchor') : pick('Минорная геометрия', 'Minor geometry'),
+        templateIndex === 3 ? pick('Тоника на 6-й струне', 'Root on 6th string') : pick('Переносимая', 'Movable'),
+        ...(['harmonic-minor', 'melodic-minor'].includes(scaleFamily) ? [pick('Контроль растяжки', 'Stretch control')] : []),
       ],
       popularity: isMajor ? template.popularity : template.id === 'e' ? 89 : template.popularity - 8,
       generationOptions,
@@ -922,17 +944,17 @@ export function makeThreeNpsPatterns(
       id: `${origin}-3nps-${template.position}-${locations[0]?.fret ?? 0}`,
       name: `3NPS ${template.position} · ${degreeNote.symbol}`,
       description: origin === 'canonical'
-        ? 'Стандартная последовательная форма: три ноты на каждой струне'
-        : 'Три ноты на струне, рассчитанные для выбранного строя',
+        ? pick('Стандартная последовательная форма: три ноты на каждой струне', 'Standard sequential shape: three notes on every string')
+        : pick('Три ноты на струне, рассчитанные для выбранного строя', 'Three notes per string, computed for the current tuning'),
       family: '3nps',
       locations,
       notes,
       origin,
       tags: [
-        '3 ноты/струна',
+        pick('3 ноты/струна', '3 notes/string'),
         'Alternate picking',
-        origin === 'canonical' ? 'Классическая' : 'Под текущий строй',
-        ...(['harmonic-minor', 'melodic-minor'].includes(scaleFamily) ? ['Широкий интервал'] : []),
+        origin === 'canonical' ? pick('Классическая', 'Classic') : pick('Под текущий строй', 'For current tuning'),
+        ...(['harmonic-minor', 'melodic-minor'].includes(scaleFamily) ? [pick('Широкий интервал', 'Wide interval')] : []),
       ],
       popularity: template.startDegree === 0 ? 96 : 84 - template.startDegree,
       generationOptions,
@@ -959,13 +981,16 @@ export function makePositionalPatterns(
     const locations = realizeStepGrid(config, notes, firstString, template.steps)
     const pattern = buildPattern({
       id: `position-${template.position}-${Math.min(...locations.map((location) => location.fret))}`,
-      name: `Позиционная ${template.position}`,
-      description: 'Семь позиционных форм в стиле Berklee: кисть остаётся в пределах одной позиции',
+      name: pick(`Позиционная ${template.position}`, `Positional ${template.position}`),
+      description: pick(
+        'Семь позиционных форм в стиле Berklee: кисть остаётся в пределах одной позиции',
+        'Seven Berklee-style positional shapes: the hand stays within one position',
+      ),
       family: 'position',
       locations,
       notes,
       origin,
-      tags: ['Позиционная', 'Чтение с листа', origin === 'canonical' ? 'Проверенная карта' : 'Под текущий строй'],
+      tags: [pick('Позиционная', 'Positional'), pick('Чтение с листа', 'Sight-reading'), origin === 'canonical' ? pick('Проверенная карта', 'Proven map') : pick('Под текущий строй', 'For current tuning')],
       popularity: scaleFamily === 'natural-minor' && template.position === 5
         ? 100
         : template.position === 4 ? 93 : 88 - template.position,
@@ -997,13 +1022,16 @@ export function makeOneOctavePatterns(
       const visibleStringNumber = config.strings.length - rootString
       const pattern = buildPattern({
         id: `one-octave-${topology.id}-string-${rootString}-${locations[0]?.fret ?? 0}`,
-        name: `${topology.name} · с ${visibleStringNumber}-й струны`,
-        description: 'Проверенная однооктавная геометрия тоника → тоника для разучивания и фразировки',
+        name: pick(`${topology.name} · с ${visibleStringNumber}-й струны`, `${topology.name} · from ${stringOrdinal(visibleStringNumber)}`),
+        description: pick(
+          'Проверенная однооктавная геометрия тоника → тоника для разучивания и фразировки',
+          'Proven one-octave tonic → tonic geometry for learning and phrasing',
+        ),
         family: 'one-octave',
         locations,
         notes,
         origin: standardOffset === null ? 'generated' : 'canonical',
-        tags: ['Тоника → тоника', topology.name, `${visibleStringNumber}-я струна`],
+        tags: [pick('Тоника → тоника', 'Tonic → tonic'), topology.name, stringOrdinal(visibleStringNumber)],
         popularity:
           topology.popularity -
           rootIndex * 3 +
@@ -1041,17 +1069,20 @@ export function makeTwoOctaveHybridPatterns(
       const visibleStringNumber = config.strings.length - rootString
       const pattern = buildPattern({
         id: `two-octave-${topology.id}-string-${rootString}-${locations[0]?.fret ?? 0}`,
-        name: `${topology.shortName} · ${visibleStringNumber}-я стр.`,
-        description: `Двухоктавный гибрид с точным распределением ${topology.name} нот по последовательным струнам`,
+        name: pick(`${topology.shortName} · ${visibleStringNumber}-я стр.`, `${topology.shortName} · str. ${visibleStringNumber}`),
+        description: pick(
+          `Двухоктавный гибрид с точным распределением ${topology.name} нот по последовательным струнам`,
+          `Two-octave hybrid with the exact ${topology.name} note distribution across consecutive strings`,
+        ),
         family: 'two-octave',
         locations,
         notes,
         origin,
         tags: [
-          'Тоника → тоника → тоника',
-          `${topology.name} по струнам`,
-          topology.steps.length === 5 ? '5 струн' : '6 струн',
-          origin === 'curated' ? 'Гибридный маршрут' : 'Под текущий строй',
+          pick('Тоника → тоника → тоника', 'Tonic → tonic → tonic'),
+          pick(`${topology.name} по струнам`, `${topology.name} across strings`),
+          topology.steps.length === 5 ? pick('5 струн', '5 strings') : pick('6 струн', '6 strings'),
+          origin === 'curated' ? pick('Гибридный маршрут', 'Hybrid route') : pick('Под текущий строй', 'For current tuning'),
         ],
         popularity: topology.popularity,
         generationOptions,
@@ -1115,13 +1146,16 @@ export function makeExtendedPatterns(
   return [...unique.values()].flatMap((candidate, index) => {
     const pattern = buildPattern({
       id: `extended-${candidate.root.stringIndex}-${candidate.root.fret}-${candidate.octaveCount}`,
-      name: `Диагональ ${index + 1} · ${candidate.octaveCount} октавы`,
-      description: 'Расширенный маршрут соединяет соседние позиции вдоль грифа',
+      name: pick(`Диагональ ${index + 1} · ${candidate.octaveCount} октавы`, `Diagonal ${index + 1} · ${octaveLabel(candidate.octaveCount)}`),
+      description: pick(
+        'Расширенный маршрут соединяет соседние позиции вдоль грифа',
+        'Extended route linking adjacent positions along the neck',
+      ),
       family: 'extended',
       locations: candidate.path,
       notes,
       origin: 'generated',
-      tags: ['Диагональная', 'Смены позиции', `${candidate.octaveCount} октавы`],
+      tags: [pick('Диагональная', 'Diagonal'), pick('Смены позиции', 'Position shifts'), octaveLabel(candidate.octaveCount)],
       popularity: 78 - index * 3,
       generationOptions,
       preferredOctaves: candidate.octaveCount === 3 ? [1, 2, 3] : [1, 2],

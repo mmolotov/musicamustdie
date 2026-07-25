@@ -1,4 +1,5 @@
 import type { FrettingFinger } from './types'
+import { pick } from '../i18n'
 
 export type ScaleStepGrid = readonly (readonly number[])[]
 
@@ -108,13 +109,17 @@ export interface OneOctaveTopology {
 export const ONE_OCTAVE_TOPOLOGIES: readonly OneOctaveTopology[] = [
   {
     id: 'compact',
-    name: 'Компактная',
+    get name() {
+      return pick('Компактная', 'Compact')
+    },
     steps: [[0, 1], [2, 3, 4], [5, 6, 7]],
     popularity: 96,
   },
   {
     id: 'forward',
-    name: 'Поточная',
+    get name() {
+      return pick('Поточная', 'Flowing')
+    },
     steps: [[0, 1, 2], [3, 4, 5], [6, 7]],
     popularity: 94,
   },
