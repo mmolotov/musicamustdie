@@ -69,7 +69,7 @@ test('переключает семейства, маршруты и аними�
 
 test('сохраняет профиль и оставляет CAGED на верхних шести струнах восьмиструнной гитары', async ({ page }) => {
   await page.goto('/?section=scales')
-  await page.getByRole('button', { name: 'Настроить инструмент' }).click()
+  await page.getByRole('button', { name: 'Параметры инструмента' }).click()
   await page.getByRole('button', { name: '8', exact: true }).click()
   await page.getByRole('button', { name: 'Продвинутый' }).click()
   await page.getByRole('button', { name: 'Большой' }).click()
@@ -84,7 +84,7 @@ test('сохраняет профиль и оставляет CAGED на вер�
   await page.reload()
   await expect(page.getByText('8 струн', { exact: true })).toBeVisible()
   await expect(page.getByText('Профиль · Растяжка')).toBeVisible()
-  await page.getByRole('button', { name: 'Настроить инструмент' }).click()
+  await page.getByRole('button', { name: 'Параметры инструмента' }).click()
   await expect(page.getByRole('button', { name: 'Продвинутый' })).toHaveClass(/is-active/)
   await expect(page.getByRole('button', { name: 'Большой' })).toHaveClass(/is-active/)
   await expect(page.getByRole('button', { name: 'Растяжка' })).toHaveClass(/is-active/)
