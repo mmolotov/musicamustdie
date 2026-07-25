@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { CircleOfFifths } from './components/CircleOfFifths'
 import { getInstrument, listInstruments } from './instruments/registry'
 import { getInstrumentUi } from './instruments/uiRegistry'
+import type { DetailSection } from './hooks/useUrlState'
 import type { MinorVariant } from './music/types'
 import {
   buildScale,
@@ -11,22 +12,15 @@ import {
   keyDisplayName,
   notesForDirection,
 } from './music/theory'
-import { useUrlState, type DetailSection } from './hooks/useUrlState'
+import { useUrlState } from './hooks/useUrlState'
+import { LANGS, setLang, useLang, useT } from './i18n'
 
-const MINOR_VARIANTS: Array<{ id: MinorVariant; label: string; short: string }> = [
-  { id: 'natural', label: 'Натуральный минор', short: 'Натуральный' },
-  { id: 'harmonic', label: 'Гармонический минор', short: 'Гармонический' },
-  { id: 'melodic-classical', label: 'Классический мелодический минор', short: 'Мелодический' },
-  { id: 'melodic-jazz', label: 'Джазовый мелодический минор', short: 'Джазовый' },
-]
-
-const SECTIONS: Array<{ id: DetailSection; label: string; hint: string }> = [
-  { id: 'notes', label: 'Ноты', hint: 'состав и весь гриф' },
-  { id: 'scales', label: 'Гамма и TAB', hint: '5 систем и маршруты' },
-  { id: 'chords', label: 'Аккорды', hint: 'гармония и формы' },
-]
+const MINOR_VARIANTS: MinorVariant[] = ['natural', 'harmonic', 'melodic-classical', 'melodic-jazz']
+const SECTIONS: DetailSection[] = ['notes', 'scales', 'chords']
 
 export default function App() {
+  const tr = useT()
+  const lang = useLang()
   const [shareState, setShareState] = useUrlState()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -34,9 +28,10 @@ export default function App() {
   const activeInstrument =
     getInstrument(shareState.instrument) ?? instruments[0]
   const activeUi = activeInstrument ? getInstrumentUi(activeInstrument.id) : undefined
+  // `lang` is included so translated labels/spellings recompute on switch.
   const scale = useMemo(
     () => buildScale(shareState.selection, shareState.minorVariant),
-    [shareState.minorVariant, shareState.selection],
+    [shareState.minorVariant, shareState.selection, lang],
   )
   const activeNotes = useMemo(
     () => notesForDirection(scale, shareState.direction),
@@ -63,9 +58,9 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#details-panel">Перейти к информации о тональности</a>
+      <a className="skip-link" href="#details-panel">{tr('skip.toDetails')}</a>
       <header className="site-header">
-        <a href={import.meta.env.BASE_URL} className="brand" aria-label="musicamustdie — на главную">
+        <a href={import.meta.env.BASE_URL} className="brand" aria-label={tr('brand.homeAria')}>
           <img
             className="brand__logo"
             src={`${import.meta.env.BASE_URL}musicamustdie-logo.png`}
@@ -76,9 +71,22 @@ export default function App() {
           />
         </a>
         <div className="header-actions">
+          <div className="lang-switch" role="group" aria-label={tr('lang.aria')}>
+            {LANGS.map((code) => (
+              <button
+                type="button"
+                key={code}
+                className={lang === code ? 'is-active' : ''}
+                aria-pressed={lang === code}
+                onClick={() => setLang(code)}
+              >
+                {code.toUpperCase()}
+              </button>
+            ))}
+          </div>
           {instruments.length > 1 ? (
             <label className="instrument-select">
-              <span>Инструмент</span>
+              <span>{tr('header.instrument')}</span>
               <select
                 value={activeInstrument?.id}
                 onChange={(event) =>
@@ -97,19 +105,19 @@ export default function App() {
             type="button"
             className="header-button"
             onClick={() => void copyLink()}
-            aria-label="Скопировать ссылку на выбранную тональность"
+            aria-label={tr('header.shareAria')}
           >
-            {copied ? 'Ссылка скопирована' : 'Поделиться'}
+            {copied ? tr('header.copied') : tr('header.share')}
           </button>
           <button type="button" className="primary-button" onClick={() => setSettingsOpen(true)}>
-            Настроить инструмент
+            {tr('header.configure')}
           </button>
         </div>
       </header>
 
       <main>
         <div className="main-layout">
-          <section className="circle-panel" aria-label="Выбор тональности">
+          <section className="circle-panel" aria-label={tr('circle.panelAria')}>
             <CircleOfFifths
               selection={shareState.selection}
               onSelect={(selection) => setShareState((state) => ({ ...state, selection }))}
@@ -128,7 +136,7 @@ export default function App() {
                   <span>{keySignature.label}</span>
                 </span>
                 {hasEnharmonicPair && (
-                  <div className="segmented segmented--small" aria-label="Энгармоническое написание">
+                  <div className="segmented segmented--small" aria-label={tr('enharmonic.aria')}>
                     <button
                       type="button"
                       className={shareState.selection.spelling === 'sharp' ? 'is-active' : ''}
@@ -139,7 +147,7 @@ export default function App() {
                         }))
                       }
                     >
-                      ♯ запись
+                      {tr('enharmonic.sharp')}
                     </button>
                     <button
                       type="button"
@@ -151,14 +159,14 @@ export default function App() {
                         }))
                       }
                     >
-                      ♭ запись
+                      {tr('enharmonic.flat')}
                     </button>
                   </div>
                 )}
               </div>
               <div className="details-title-row">
                 <div>
-                  <span className="eyebrow">Выбранная тональность</span>
+                  <span className="eyebrow">{tr('details.selectedKey')}</span>
                   <h2>{keyDisplayName(shareState.selection)}</h2>
                   <p>{scale.label} · {scale.formula}</p>
                 </div>
@@ -169,19 +177,19 @@ export default function App() {
 
               {shareState.selection.mode === 'minor' && (
                 <div className="variant-controls">
-                  <span>Вид минора</span>
-                  <div className="variant-scroll" role="group" aria-label="Вид минорной гаммы">
+                  <span>{tr('minor.kind')}</span>
+                  <div className="variant-scroll" role="group" aria-label={tr('minor.kindAria')}>
                     {MINOR_VARIANTS.map((variant) => (
                       <button
                         type="button"
-                        key={variant.id}
-                        className={shareState.minorVariant === variant.id ? 'is-active' : ''}
+                        key={variant}
+                        className={shareState.minorVariant === variant ? 'is-active' : ''}
                         onClick={() =>
-                          setShareState((state) => ({ ...state, minorVariant: variant.id }))
+                          setShareState((state) => ({ ...state, minorVariant: variant }))
                         }
-                        title={variant.label}
+                        title={tr(`minorVariant.${variant}`)}
                       >
-                        {variant.short}
+                        {tr(`minorVariant.${variant}.short`)}
                       </button>
                     ))}
                   </div>
@@ -191,38 +199,38 @@ export default function App() {
               {shareState.selection.mode === 'minor' &&
                 shareState.minorVariant === 'melodic-classical' && (
                   <div className="direction-control">
-                    <span>Направление меняет VI и VII ступени:</span>
+                    <span>{tr('direction.hint')}</span>
                     <div className="segmented segmented--small">
                       <button
                         type="button"
                         className={shareState.direction === 'ascending' ? 'is-active' : ''}
                         onClick={() => setShareState((state) => ({ ...state, direction: 'ascending' }))}
                       >
-                        ↑ Вверх
+                        {tr('direction.up')}
                       </button>
                       <button
                         type="button"
                         className={shareState.direction === 'descending' ? 'is-active' : ''}
                         onClick={() => setShareState((state) => ({ ...state, direction: 'descending' }))}
                       >
-                        ↓ Вниз
+                        {tr('direction.down')}
                       </button>
                     </div>
                   </div>
                 )}
             </div>
 
-            <nav className="detail-tabs" aria-label="Разделы информации о тональности">
+            <nav className="detail-tabs" aria-label={tr('tabs.aria')}>
               {SECTIONS.map((section) => (
                 <button
                   type="button"
-                  key={section.id}
-                  className={shareState.section === section.id ? 'is-active' : ''}
-                  aria-current={shareState.section === section.id ? 'page' : undefined}
-                  onClick={() => setShareState((state) => ({ ...state, section: section.id }))}
+                  key={section}
+                  className={shareState.section === section ? 'is-active' : ''}
+                  aria-current={shareState.section === section ? 'page' : undefined}
+                  onClick={() => setShareState((state) => ({ ...state, section }))}
                 >
-                  <strong>{section.label}</strong>
-                  <span>{section.hint}</span>
+                  <strong>{tr(`tabs.${section}`)}</strong>
+                  <span>{tr(`tabs.${section}.hint`)}</span>
                 </button>
               ))}
             </nav>
@@ -239,8 +247,8 @@ export default function App() {
               />
             ) : (
               <div className="empty-state">
-                <strong>Модуль инструмента не найден.</strong>
-                <p>Выберите доступный инструмент в верхней панели.</p>
+                <strong>{tr('empty.title')}</strong>
+                <p>{tr('empty.hint')}</p>
               </div>
             )}
           </section>

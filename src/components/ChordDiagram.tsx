@@ -1,5 +1,6 @@
 import type { GuitarConfig, GuitarVoicing } from '../instruments/guitar'
 import { formatOpenString } from '../instruments/guitar'
+import { useT } from '../i18n'
 
 interface ChordDiagramProps {
   config: GuitarConfig
@@ -14,6 +15,7 @@ export function ChordDiagram({
   chordSymbol,
   showFingerings,
 }: ChordDiagramProps) {
+  const tr = useT()
   const spacingX = 30
   const spacingY = 28
   const paddingX = 34
@@ -29,11 +31,11 @@ export function ChordDiagram({
   const fretY = (fret: number) => 42 + (fret - baseFret + 0.5) * spacingY
 
   return (
-    <figure className="chord-diagram" aria-label={`Аппликатура аккорда ${chordSymbol}`}>
+    <figure className="chord-diagram" aria-label={tr('chord.diagramAria', { chord: chordSymbol })}>
       <svg
         viewBox={`0 0 ${diagramWidth} ${diagramHeight}`}
         role="img"
-        aria-label={`${chordSymbol}, ${voicing.inversionLabel}, позиция ${voicing.position}`}
+        aria-label={tr('chord.voicingAria', { chord: chordSymbol, inversion: voicing.inversionLabel, position: voicing.position })}
       >
         {Array.from({ length: config.strings.length }, (_, stringIndex) => {
           const x = stringX(stringIndex)
@@ -107,9 +109,9 @@ export function ChordDiagram({
       </svg>
       <figcaption>
         <strong>{voicing.inversionLabel}</strong>
-        <span>{voicing.position === 0 ? 'открытая позиция' : `${voicing.position} лад`}</span>
+        <span>{voicing.position === 0 ? tr('chord.openPosition') : tr('chord.fret', { n: voicing.position })}</span>
       </figcaption>
-      <div className="chord-mini-tab" aria-label="Табулатура аккорда">
+      <div className="chord-mini-tab" aria-label={tr('chord.tabAria')}>
         {[...config.strings]
           .map((openMidi, stringIndex) => ({ openMidi, stringIndex }))
           .reverse()

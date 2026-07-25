@@ -42,6 +42,6 @@ describe('реестр инструментальных модулей', () => {
 
   it('не допускает случайную повторную регистрацию id', () => {
     registerInstrument(fakeModule)
-    expect(() => registerInstrument(fakeModule)).toThrow(/уже зарегистрирован/)
+    expect(() => registerInstrument(fakeModule)).toThrow(/already registered/)
   })
 })

@@ -31,18 +31,20 @@ import { Fretboard } from './Fretboard'
 import { Tablature } from './Tablature'
 import { ChordDiagram } from './ChordDiagram'
 import { GuitarSettings } from './GuitarSettings'
+import { t, useLang, useT } from '../i18n'
 
 type PatternFamilyChoice = 'recommended' | GuitarScaleFamily
 
-const SCALE_FAMILIES: Array<{ id: PatternFamilyChoice; label: string }> = [
-  { id: 'recommended', label: 'Лучшие' },
-  { id: 'caged', label: 'CAGED' },
-  { id: 'position', label: '7 позиций' },
-  { id: '3nps', label: '3NPS' },
-  { id: 'one-octave', label: 'Однооктавные' },
-  { id: 'two-octave', label: '2 октавы' },
-  { id: 'extended', label: 'Расширенные' },
+const SCALE_FAMILY_IDS: PatternFamilyChoice[] = [
+  'recommended', 'caged', 'position', '3nps', 'one-octave', 'two-octave', 'extended',
 ]
+
+// CAGED / 3NPS are the same in both languages; the rest come from the dictionary.
+function familyLabel(id: string): string {
+  if (id === 'caged') return 'CAGED'
+  if (id === '3nps') return '3NPS'
+  return t(`ws.families.${id}`)
+}
 
 function scalePlaybackEvents(notes: ScaleNote[], direction: ScaleDirection): PlayableEvent[] {
   if (notes.length === 0) return []
@@ -72,21 +74,22 @@ function LabelModeToggle({
   preferences: GuitarPreferences
   onChange: (preferences: GuitarPreferences) => void
 }) {
+  const tr = useT()
   return (
-    <div className="segmented segmented--small" aria-label="Подписи на грифе">
+    <div className="segmented segmented--small" aria-label={tr('ws.labelsAria')}>
       <button
         type="button"
         className={preferences.fretboardLabels === 'notes' ? 'is-active' : ''}
         onClick={() => onChange({ ...preferences, fretboardLabels: 'notes' })}
       >
-        Ноты
+        {tr('ws.notes')}
       </button>
       <button
         type="button"
         className={preferences.fretboardLabels === 'degrees' ? 'is-active' : ''}
         onClick={() => onChange({ ...preferences, fretboardLabels: 'degrees' })}
       >
-        Ступени
+        {tr('ws.degrees')}
       </button>
     </div>
   )
@@ -111,17 +114,18 @@ function NotesView({
   playMidi,
   playScale,
 }: NotesViewProps) {
+  const tr = useT()
   const noteMidis = ascendingScaleMidis(activeNotes)
 
   return (
     <section className="workspace-section" aria-labelledby="notes-heading">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">Состав тональности</span>
-          <h3 id="notes-heading">Семь ступеней</h3>
+          <span className="eyebrow">{tr('ws.scaleContent')}</span>
+          <h3 id="notes-heading">{tr('ws.sevenDegrees')}</h3>
         </div>
         <AudioButton
-          label={direction === 'ascending' ? 'Сыграть вверх' : 'Сыграть вниз'}
+          label={direction === 'ascending' ? tr('ws.playUp') : tr('ws.playDown')}
           onClick={playScale}
         />
       </div>
@@ -133,7 +137,7 @@ function NotesView({
             className={note.degree === 1 ? 'note-card is-root' : 'note-card'}
             key={`${note.symbol}-${note.degree}`}
             onClick={() => playMidi(noteMidis[index] ?? midiNearMiddleC(note.pitchClass))}
-            aria-label={`${note.degree} ступень, ${note.accessibleName}. Воспроизвести.`}
+            aria-label={tr('ws.degreeNoteAria', { degree: note.degree, note: note.accessibleName })}
           >
             <span className="note-card__degree">{note.degreeLabel}</span>
             <strong>{note.symbol}</strong>
@@ -144,8 +148,8 @@ function NotesView({
 
       <div className="subsection-heading">
         <div>
-          <h4>Все ноты на грифе</h4>
-          <p>Корневая нота выделена коралловым цветом. Нажмите любую позицию, чтобы услышать её.</p>
+          <h4>{tr('ws.allNotes')}</h4>
+          <p>{tr('ws.allNotesHint')}</p>
         </div>
         <LabelModeToggle preferences={preferences} onChange={onPreferencesChange} />
       </div>
@@ -155,10 +159,10 @@ function NotesView({
         labelMode={preferences.fretboardLabels}
         onPlayNote={playMidi}
       />
-      <div className="fretboard-legend" aria-label="Легенда грифа">
-        <span><i className="legend-dot legend-dot--root" /> тоника</span>
-        <span><i className="legend-dot" /> ноты гаммы</span>
-        <span>Полный диапазон · {preferences.config.frets} лада</span>
+      <div className="fretboard-legend" aria-label={tr('ws.fretboardLegendAria')}>
+        <span><i className="legend-dot legend-dot--root" /> {tr('ws.tonic')}</span>
+        <span><i className="legend-dot" /> {tr('ws.scaleNotes')}</span>
+        <span>{tr('ws.fullRange', { frets: preferences.config.frets })}</span>
       </div>
     </section>
   )
@@ -183,6 +187,7 @@ function ScalesView({
   playEvents,
   tonicSymbol,
 }: ScalesViewProps) {
+  const tr = useT()
   const [requestedFamily, setRequestedFamily] = useState<PatternFamilyChoice>('recommended')
   const [selectedPatternByFamily, setSelectedPatternByFamily] = useState<Record<string, string>>({})
   const [selectedRouteByPattern, setSelectedRouteByPattern] = useState<Record<string, string>>({})
@@ -204,12 +209,12 @@ function ScalesView({
   ].slice(0, recommendationTarget)
   const patternGroupsByFamily = new Map<PatternFamilyChoice, typeof recommendedGroups>()
   patternGroupsByFamily.set('recommended', recommendedGroups)
-  SCALE_FAMILIES.forEach((family) => {
-    if (family.id === 'recommended') return
+  SCALE_FAMILY_IDS.forEach((familyId) => {
+    if (familyId === 'recommended') return
     patternGroupsByFamily.set(
-      family.id,
+      familyId,
       groupScalePatternsForDisplay(
-        rankedPatterns.filter((pattern) => pattern.system === family.id),
+        rankedPatterns.filter((pattern) => pattern.system === familyId),
       ),
     )
   })
@@ -224,7 +229,7 @@ function ScalesView({
   const fallbackRoute: PatternRoute | undefined = selectedPattern
     ? {
         id: 'legacy',
-        name: 'Маршрут',
+        name: tr('ws.route'),
         kind: 'modal',
         ascending: selectedPattern.ascending,
         descending: selectedPattern.descending,
@@ -254,7 +259,7 @@ function ScalesView({
     : 0
   const routeLabel = tonicRoute
     ? Array.from({ length: routeOctaves + 1 }, () => tonicSymbol).join(' → ')
-    : `${selectedRoute?.name ?? 'Маршрут'} · ${selectedEvents.length} нот`
+    : tr('ws.routeNotes', { name: selectedRoute?.name ?? tr('ws.route'), count: selectedEvents.length })
   const showScaleFingerings = preferences.showScaleFingerings ?? true
   const showScaleShifts = preferences.showScaleShifts ?? true
 
@@ -299,19 +304,19 @@ function ScalesView({
 
   const comfortLabel = selectedPattern?.ergonomics
     ? selectedPattern.ergonomics.difficulty <= 1
-      ? 'Легко'
+      ? tr('ws.comfort.easy')
       : selectedPattern.ergonomics.difficulty <= 3
-        ? 'Средне'
-        : 'Требует растяжки'
-    : 'Без оценки'
+        ? tr('ws.comfort.medium')
+        : tr('ws.comfort.hard')
+    : tr('ws.comfort.none')
   const comfortTone = selectedPattern?.ergonomics
     ? selectedPattern.ergonomics.difficulty <= 1
       ? 'easy'
       : selectedPattern.ergonomics.difficulty <= 3 ? 'medium' : 'hard'
     : 'medium'
   const profileLabel = generationOptions.reachProfile === 'compact'
-    ? 'Компактно'
-    : generationOptions.reachProfile === 'stretch' ? 'Растяжка' : 'Баланс'
+    ? tr('ws.profile.compact')
+    : generationOptions.reachProfile === 'stretch' ? tr('ws.profile.stretch') : tr('ws.profile.balanced')
   const viewport = selectedPattern
     ? {
         fromFret: Math.max(0, selectedPattern.startPosition - 1),
@@ -323,25 +328,25 @@ function ScalesView({
     <section className="workspace-section" aria-labelledby="scales-heading">
       <div className="section-heading section-heading--wrap">
         <div>
-          <span className="eyebrow">Аппликатуры гаммы</span>
-          <h3 id="scales-heading">Библиотека аппликатур</h3>
+          <span className="eyebrow">{tr('ws.scaleFingerings')}</span>
+          <h3 id="scales-heading">{tr('ws.fingeringLibrary')}</h3>
         </div>
-        <span className="practice-profile-badge">Профиль · {profileLabel}</span>
+        <span className="practice-profile-badge">{tr('ws.profileBadge', { profile: profileLabel })}</span>
       </div>
 
-      <div className="scale-family-tabs" role="tablist" aria-label="Семейство аппликатур">
-        {SCALE_FAMILIES.map((family) => {
-          const count = patternGroupsByFamily.get(family.id)?.length ?? 0
+      <div className="scale-family-tabs" role="tablist" aria-label={tr('ws.familyTabsAria')}>
+        {SCALE_FAMILY_IDS.map((familyId) => {
+          const count = patternGroupsByFamily.get(familyId)?.length ?? 0
           return (
             <button
               type="button"
               role="tab"
-              aria-selected={effectiveFamily === family.id}
-              className={effectiveFamily === family.id ? 'is-active' : ''}
-              key={family.id}
-              onClick={() => setRequestedFamily(family.id)}
+              aria-selected={effectiveFamily === familyId}
+              className={effectiveFamily === familyId ? 'is-active' : ''}
+              key={familyId}
+              onClick={() => setRequestedFamily(familyId)}
             >
-              {family.label}<small>{count}</small>
+              {familyLabel(familyId)}<small>{count}</small>
             </button>
           )
         })}
@@ -349,12 +354,12 @@ function ScalesView({
 
       {activePatterns.length === 0 || !selectedPattern ? (
         <div className="empty-state">
-          <strong>Это семейство недоступно в текущем строе.</strong>
-          <p>CAGED требует стандартного шестиструнного блока. Позиционные, одно- и двухоктавные, а также расширенные маршруты продолжают рассчитываться под выбранный инструмент.</p>
+          <strong>{tr('ws.familyUnavailable')}</strong>
+          <p>{tr('ws.familyUnavailableHint')}</p>
         </div>
       ) : (
         <>
-          <div className="pattern-picker" role="list" aria-label="Позиции гаммы">
+          <div className="pattern-picker" role="list" aria-label={tr('ws.positionsAria')}>
             {activePatterns.map((pattern) => (
               <button
                 type="button"
@@ -368,11 +373,11 @@ function ScalesView({
               >
                 <strong>{pattern.name}</strong>
                 <span>
-                  {pattern.startPosition}–{pattern.endPosition} лады
+                  {tr('ws.fretRange', { start: pattern.startPosition, end: pattern.endPosition })}
                   {effectiveFamily === 'recommended' && (
-                    <> · {SCALE_FAMILIES.find((family) => family.id === pattern.system)?.label}</>
+                    <> · {familyLabel(pattern.system)}</>
                   )}
-                  {pattern.preferredVariant && <> · лучший старт</>}
+                  {pattern.preferredVariant && <> · {tr('ws.bestStart.inline')}</>}
                 </span>
               </button>
             ))}
@@ -380,7 +385,7 @@ function ScalesView({
 
           <div className="pattern-summary">
             <div>
-              <span className="eyebrow">Выбрана аппликатура</span>
+              <span className="eyebrow">{tr('ws.selectedFingering')}</span>
               <div className="pattern-summary__title">
                 <h4>{selectedPattern.name}</h4>
                 <span className={`comfort-badge comfort-badge--${comfortTone}`}>{comfortLabel}</span>
@@ -388,22 +393,22 @@ function ScalesView({
               <p>{selectedPattern.description}</p>
               {selectedGroup.aliasNames.length > 0 && (
                 <p className="pattern-equivalents">
-                  Совпадает на грифе с: <strong>{selectedGroup.aliasNames.join(', ')}</strong>
+                  {tr('ws.matchesOnBoard')} <strong>{selectedGroup.aliasNames.join(', ')}</strong>
                 </p>
               )}
-              <p className="route-summary">Маршрут: <strong>{routeLabel}</strong></p>
+              <p className="route-summary">{tr('ws.routeSummary')} <strong>{routeLabel}</strong></p>
               {selectedPattern.tags && selectedPattern.tags.length > 0 && (
-                <div className="pattern-tags" aria-label="Характеристики аппликатуры">
+                <div className="pattern-tags" aria-label={tr('ws.patternTagsAria')}>
                   {selectedPattern.tags.map((tag) => <span key={tag}>{tag}</span>)}
-                  {selectedPattern.preferredVariant && <span>Лучший старт</span>}
+                  {selectedPattern.preferredVariant && <span>{tr('ws.bestStart')}</span>}
                   {selectedPattern.ergonomics && (
-                    <span>{selectedPattern.ergonomics.shifts} смен позиции</span>
+                    <span>{tr('ws.shiftsCount', { n: selectedPattern.ergonomics.shifts })}</span>
                   )}
                 </div>
               )}
             </div>
             <AudioButton
-              label={direction === 'ascending' ? 'Сыграть маршрут вверх' : 'Сыграть маршрут вниз'}
+              label={direction === 'ascending' ? tr('ws.playRouteUp') : tr('ws.playRouteDown')}
               onClick={playPattern}
               disabled={selectedEvents.length === 0}
             />
@@ -411,8 +416,8 @@ function ScalesView({
 
           <div className="scale-route-row">
             <div>
-              <span className="control-label">Маршрут упражнения</span>
-              <div className="segmented route-selector" role="radiogroup" aria-label="Маршрут упражнения">
+              <span className="control-label">{tr('ws.exerciseRoute')}</span>
+              <div className="segmented route-selector" role="radiogroup" aria-label={tr('ws.exerciseRoute')}>
                 {availableRoutes.map((route) => (
                   <button
                     type="button"
@@ -441,7 +446,7 @@ function ScalesView({
                   showScaleFingerings: !showScaleFingerings,
                 })}
               >
-                Пальцы
+                {tr('ws.fingers')}
               </button>
               <button
                 type="button"
@@ -452,7 +457,7 @@ function ScalesView({
                   showScaleShifts: !showScaleShifts,
                 })}
               >
-                Переходы
+                {tr('ws.transitions')}
               </button>
             </div>
           </div>
@@ -470,11 +475,11 @@ function ScalesView({
             showFingerings={showScaleFingerings}
             showShifts={showScaleShifts}
           />
-          <div className="fretboard-legend scale-legend" aria-label="Легенда аппликатуры">
-            <span><i className="legend-dot legend-dot--root" /> тоника</span>
-            <span><i className="legend-dot" /> маршрут</span>
-            {showScaleFingerings && <span><i className="legend-finger">1–4</i> пальцы</span>}
-            {showScaleShifts && <span><i className="legend-shift" /> смена позиции</span>}
+          <div className="fretboard-legend scale-legend" aria-label={tr('ws.scaleLegendAria')}>
+            <span><i className="legend-dot legend-dot--root" /> {tr('ws.tonic')}</span>
+            <span><i className="legend-dot" /> {tr('ws.routeLegend')}</span>
+            {showScaleFingerings && <span><i className="legend-finger">1–4</i> {tr('ws.fingersLegend')}</span>}
+            {showScaleShifts && <span><i className="legend-shift" /> {tr('ws.shiftLegend')}</span>}
           </div>
           <Tablature
             config={preferences.config}
@@ -504,16 +509,17 @@ interface VoicingFiltersProps {
 }
 
 function VoicingFilters({ preferences, onChange }: VoicingFiltersProps) {
+  const tr = useT()
   const { constraints, config } = preferences
   return (
     <details className="filter-panel">
       <summary>
-        <span>Фильтры аппликатур</span>
-        <span className="filter-summary">до {constraints.maxSpan} ладов · {constraints.bass === 'root' ? 'тоника в басу' : 'любой бас'}</span>
+        <span>{tr('ws.voicingFilters')}</span>
+        <span className="filter-summary">{tr('ws.filterSummary', { span: constraints.maxSpan, bass: constraints.bass === 'root' ? tr('ws.bassInBass') : tr('ws.anyBass') })}</span>
       </summary>
       <div className="filter-grid">
         <label>
-          <span>Растяжение: {constraints.maxSpan} лада</span>
+          <span>{tr('ws.stretch', { span: constraints.maxSpan })}</span>
           <input
             type="range"
             min="3"
@@ -525,7 +531,7 @@ function VoicingFilters({ preferences, onChange }: VoicingFiltersProps) {
           />
         </label>
         <label>
-          <span>Минимум звучащих струн</span>
+          <span>{tr('ws.minSounding')}</span>
           <select
             value={constraints.minSoundingStrings}
             onChange={(event) =>
@@ -540,25 +546,25 @@ function VoicingFilters({ preferences, onChange }: VoicingFiltersProps) {
           </select>
         </label>
         <label>
-          <span>Басовая нота</span>
+          <span>{tr('ws.bassNote')}</span>
           <select
             value={constraints.bass}
             onChange={(event) =>
               onChange(updateConstraints(preferences, { bass: event.target.value as BassFilter }))
             }
           >
-            <option value="any">Любая</option>
-            <option value="root">Тоника</option>
-            <option value="first">Терция · 1-е обращение</option>
-            <option value="second">Квинта · 2-е обращение</option>
-            <option value="third">Септима · 3-е обращение</option>
+            <option value="any">{tr('ws.bass.any')}</option>
+            <option value="root">{tr('ws.bass.root')}</option>
+            <option value="first">{tr('ws.bass.first')}</option>
+            <option value="second">{tr('ws.bass.second')}</option>
+            <option value="third">{tr('ws.bass.third')}</option>
           </select>
         </label>
         <div className="fret-range-control">
-          <span>Диапазон ладов</span>
+          <span>{tr('ws.fretRangeLabel')}</span>
           <div>
             <label>
-              от
+              {tr('ws.from')}
               <input
                 type="number"
                 min="0"
@@ -574,7 +580,7 @@ function VoicingFilters({ preferences, onChange }: VoicingFiltersProps) {
               />
             </label>
             <label>
-              до
+              {tr('ws.to')}
               <input
                 type="number"
                 min={constraints.fretFrom}
@@ -602,7 +608,7 @@ function VoicingFilters({ preferences, onChange }: VoicingFiltersProps) {
               onChange(updateConstraints(preferences, { allowOpen: event.target.checked }))
             }
           />
-          Открытые струны
+          {tr('ws.openStringsToggle')}
         </label>
         <label className="check-control">
           <input
@@ -612,7 +618,7 @@ function VoicingFilters({ preferences, onChange }: VoicingFiltersProps) {
               onChange(updateConstraints(preferences, { allowBarre: event.target.checked }))
             }
           />
-          Разрешить баррэ
+          {tr('ws.allowBarre')}
         </label>
         <label className="check-control">
           <input
@@ -622,7 +628,7 @@ function VoicingFilters({ preferences, onChange }: VoicingFiltersProps) {
               onChange(updateConstraints(preferences, { allowInnerMutes: event.target.checked }))
             }
           />
-          Пропуски между струнами
+          {tr('ws.stringSkips')}
         </label>
         <label className="check-control">
           <input
@@ -630,7 +636,7 @@ function VoicingFilters({ preferences, onChange }: VoicingFiltersProps) {
             checked={preferences.showFingerings}
             onChange={(event) => onChange({ ...preferences, showFingerings: event.target.checked })}
           />
-          Показать пальцы и баррэ
+          {tr('ws.showFingersBarre')}
         </label>
       </div>
     </details>
@@ -645,6 +651,7 @@ interface VoicingCardProps {
 }
 
 function VoicingCard({ voicing, chord, preferences, playEvents }: VoicingCardProps) {
+  const tr = useT()
   const blockEvents = voicingToEvents(voicing)
   const arpeggioEvents = blockEvents
     .slice()
@@ -659,11 +666,11 @@ function VoicingCard({ voicing, chord, preferences, playEvents }: VoicingCardPro
         showFingerings={preferences.showFingerings}
       />
       <div className="voicing-card__actions">
-        <button type="button" onClick={() => playEvents(blockEvents)} aria-label="Сыграть аккорд одновременно">
-          <span aria-hidden="true">▶</span> Аккорд
+        <button type="button" onClick={() => playEvents(blockEvents)} aria-label={tr('ws.playChordAria')}>
+          <span aria-hidden="true">▶</span> {tr('ws.chord')}
         </button>
-        <button type="button" onClick={() => playEvents(arpeggioEvents)} aria-label="Сыграть арпеджио">
-          <span aria-hidden="true">≋</span> Арпеджио
+        <button type="button" onClick={() => playEvents(arpeggioEvents)} aria-label={tr('ws.playArpeggioAria')}>
+          <span aria-hidden="true">≋</span> {tr('ws.arpeggio')}
         </button>
       </div>
     </article>
@@ -678,6 +685,7 @@ interface ChordsViewProps {
 }
 
 function ChordsView({ harmony, preferences, onPreferencesChange, playEvents }: ChordsViewProps) {
+  const tr = useT()
   const [selectedDegree, setSelectedDegree] = useState(1)
   const [size, setSize] = useState<'triad' | 'seventh'>('triad')
   const [visibleCount, setVisibleCount] = useState(8)
@@ -710,28 +718,28 @@ function ChordsView({ harmony, preferences, onPreferencesChange, playEvents }: C
     <section className="workspace-section" aria-labelledby="chords-heading">
       <div className="section-heading section-heading--wrap">
         <div>
-          <span className="eyebrow">Гармонизация гаммы</span>
-          <h3 id="chords-heading">Диатонические аккорды</h3>
+          <span className="eyebrow">{tr('ws.scaleHarmonization')}</span>
+          <h3 id="chords-heading">{tr('ws.diatonicChords')}</h3>
         </div>
-        <div className="segmented" aria-label="Тип аккорда">
+        <div className="segmented" aria-label={tr('ws.chordTypeAria')}>
           <button
             type="button"
             className={size === 'triad' ? 'is-active' : ''}
             onClick={() => { setSize('triad'); setVisibleCount(8) }}
           >
-            Трезвучия
+            {tr('ws.triads')}
           </button>
           <button
             type="button"
             className={size === 'seventh' ? 'is-active' : ''}
             onClick={() => { setSize('seventh'); setVisibleCount(8) }}
           >
-            Септаккорды
+            {tr('ws.sevenths')}
           </button>
         </div>
       </div>
 
-      <div className="chord-picker" role="list" aria-label="Ступени и аккорды тональности">
+      <div className="chord-picker" role="list" aria-label={tr('ws.degreesChordsAria')}>
         {harmony.map((item) => {
           const itemChord = size === 'triad' ? item.triad : item.seventh
           return (
@@ -753,7 +761,7 @@ function ChordsView({ harmony, preferences, onPreferencesChange, playEvents }: C
       <div className="selected-chord-summary">
         <div className="selected-chord-summary__symbol">{chord.symbol}</div>
         <div>
-          <span className="eyebrow">{chord.roman} ступень</span>
+          <span className="eyebrow">{tr('ws.degreeLabel', { roman: chord.roman })}</span>
           <h4>{chord.qualityLabel}</h4>
           <p>{chord.notes.map((note) => `${note.symbol} (${note.solfege})`).join(' · ')}</p>
         </div>
@@ -763,20 +771,20 @@ function ChordsView({ harmony, preferences, onPreferencesChange, playEvents }: C
 
       <div className="voicing-results-heading">
         <div>
-          <h4>Практические аппликатуры</h4>
-          <p>{loading ? 'Рассчитываем варианты…' : `Найдено: ${voicings.length}`}</p>
+          <h4>{tr('ws.practicalFingerings')}</h4>
+          <p>{loading ? tr('ws.calculating') : tr('ws.found', { count: voicings.length })}</p>
         </div>
       </div>
 
       {error && <div className="error-callout">{error}</div>}
       {loading ? (
-        <div className="voicing-grid" aria-busy="true" aria-label="Расчёт аппликатур">
+        <div className="voicing-grid" aria-busy="true" aria-label={tr('ws.voicingBusyAria')}>
           {Array.from({ length: 4 }, (_, index) => <div className="voicing-skeleton" key={index} />)}
         </div>
       ) : voicings.length === 0 ? (
         <div className="empty-state">
-          <strong>Подходящих форм не найдено.</strong>
-          <p>Увеличьте растяжение, разрешите пропуски или расширьте диапазон ладов.</p>
+          <strong>{tr('ws.noShapes')}</strong>
+          <p>{tr('ws.noShapesHint')}</p>
         </div>
       ) : (
         <>
@@ -797,7 +805,7 @@ function ChordsView({ harmony, preferences, onPreferencesChange, playEvents }: C
               className="secondary-button load-more"
               onClick={() => setVisibleCount((count) => count + 8)}
             >
-              Показать ещё 8 из {voicings.length}
+              {tr('ws.showMore', { count: voicings.length })}
             </button>
           )}
         </>
@@ -814,6 +822,8 @@ export function GuitarWorkspace({
   settingsOpen,
   onCloseSettings,
 }: InstrumentWorkspaceProps) {
+  const tr = useT()
+  const lang = useLang()
   const [preferences, setPreferences] = usePersistentState<GuitarPreferences>(
     'qfc.instrument.electric-guitar.v1',
     structuredClone(DEFAULT_GUITAR_PREFERENCES),
@@ -822,7 +832,7 @@ export function GuitarWorkspace({
   const synth = useSynth()
   const locations = useMemo(
     () => locateScaleOnFretboard(preferences.config, activeNotes),
-    [activeNotes, preferences.config],
+    [activeNotes, preferences.config, lang],
   )
   const patternOptions = useMemo(
     () => ({
@@ -839,7 +849,7 @@ export function GuitarWorkspace({
       shareState.direction,
       patternOptions,
     ),
-    [activeNotes, patternOptions, preferences.config, shareState.direction],
+    [activeNotes, patternOptions, preferences.config, shareState.direction, lang],
   )
   const playMidi = (midi: number) => synth.playMidi(midi, preferences.volume)
   const playEvents = (events: PlayableEvent[]) =>
@@ -850,10 +860,10 @@ export function GuitarWorkspace({
   return (
     <>
       <div className="instrument-meta-row">
-        <span>{preferences.config.strings.length} струн</span>
-        <span>{preferences.config.frets} лада</span>
-        <span>{hasCagedTopology(preferences.config) ? 'CAGED доступен' : 'CAGED недоступен'}</span>
-        {!synth.supported && <span>Аудио не поддерживается браузером</span>}
+        <span>{tr('ws.stringsCount', { n: preferences.config.strings.length })}</span>
+        <span>{tr('ws.fretsCount', { n: preferences.config.frets })}</span>
+        <span>{hasCagedTopology(preferences.config) ? tr('ws.cagedAvailable') : tr('ws.cagedUnavailable')}</span>
+        {!synth.supported && <span>{tr('ws.audioUnsupported')}</span>}
       </div>
 
       {section === 'notes' && (

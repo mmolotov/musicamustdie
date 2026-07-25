@@ -4,11 +4,9 @@ self.onmessage = (event: MessageEvent<GenerateVoicingsRequest>) => {
   try {
     const voicings = generateVoicings(event.data)
     self.postMessage({ ok: true, voicings })
-  } catch (error) {
-    self.postMessage({
-      ok: false,
-      message: error instanceof Error ? error.message : 'Не удалось построить аппликатуры',
-    })
+  } catch {
+    // The main thread owns the (localized) error text; just signal failure.
+    self.postMessage({ ok: false })
   }
 }
 

@@ -126,6 +126,33 @@ h4 {
   width: auto;
 }
 
+.lang-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(17, 21, 24, 0.6);
+}
+
+.lang-switch button {
+  padding: 6px 11px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.lang-switch button.is-active {
+  color: #0b0f0e;
+  background: var(--sage);
+}
+
 .brand__mark {
   position: relative;
   display: block;
