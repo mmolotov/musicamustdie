@@ -13,10 +13,7 @@ export const ru: Record<string, string> = {
   'skip.toDetails': 'Перейти к информации о тональности',
   'brand.homeAria': 'musicamustdie — на главную',
   'header.instrument': 'Инструмент',
-  'header.shareAria': 'Скопировать ссылку на выбранную тональность',
-  'header.share': 'Поделиться',
-  'header.copied': 'Ссылка скопирована',
-  'header.configure': 'Настроить инструмент',
+  'header.configure': 'Параметры инструмента',
 
   // key details
   'circle.panelAria': 'Выбор тональности',
@@ -52,7 +49,7 @@ export const ru: Record<string, string> = {
   'tabs.chords.hint': 'гармония и формы',
 
   // settings panel
-  'settings.title': 'Настройка гитары',
+  'settings.title': 'Настройка инструмента',
   'settings.close': 'Закрыть настройки',
   'settings.stringCount': 'Количество струн',
   'settings.tuningPreset': 'Пресет строя',
@@ -230,10 +227,7 @@ export const en: Record<string, string> = {
   'skip.toDetails': 'Skip to key details',
   'brand.homeAria': 'musicamustdie — home',
   'header.instrument': 'Instrument',
-  'header.shareAria': 'Copy a link to the selected key',
-  'header.share': 'Share',
-  'header.copied': 'Link copied',
-  'header.configure': 'Set up instrument',
+  'header.configure': 'Instrument settings',
 
   'circle.panelAria': 'Key selection',
   'enharmonic.aria': 'Enharmonic spelling',
@@ -265,7 +259,7 @@ export const en: Record<string, string> = {
   'tabs.chords': 'Chords',
   'tabs.chords.hint': 'harmony and shapes',
 
-  'settings.title': 'Guitar setup',
+  'settings.title': 'Instrument setup',
   'settings.close': 'Close settings',
   'settings.stringCount': 'Number of strings',
   'settings.tuningPreset': 'Tuning preset',

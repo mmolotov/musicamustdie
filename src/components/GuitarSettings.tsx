@@ -1,10 +1,9 @@
 import { useEffect } from 'react'
 import {
-  DEFAULT_GUITAR_PREFERENCES,
-  GUITAR_PRESETS,
   midiToOctave,
   presetLabel,
   type GuitarPreferences,
+  type GuitarPreset,
 } from '../instruments/guitar'
 import { formatPitchClass, mod } from '../music/theory'
 import { useT } from '../i18n'
@@ -13,11 +12,21 @@ interface GuitarSettingsProps {
   preferences: GuitarPreferences
   onChange: (preferences: GuitarPreferences) => void
   onClose: () => void
+  presets: GuitarPreset[]
+  stringCounts: number[]
+  defaultPreferences: GuitarPreferences
 }
 
 const PITCH_OPTIONS = Array.from({ length: 12 }, (_, pitchClass) => pitchClass)
 
-export function GuitarSettings({ preferences, onChange, onClose }: GuitarSettingsProps) {
+export function GuitarSettings({
+  preferences,
+  onChange,
+  onClose,
+  presets,
+  stringCounts,
+  defaultPreferences,
+}: GuitarSettingsProps) {
   const tr = useT()
   const { config } = preferences
 
@@ -42,13 +51,13 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
   }
 
   const choosePreset = (presetId: string) => {
-    const preset = GUITAR_PRESETS.find((candidate) => candidate.id === presetId)
+    const preset = presets.find((candidate) => candidate.id === presetId)
     if (!preset) return
     updateConfig({ ...config, presetId: preset.id, strings: [...preset.strings] })
   }
 
   const chooseStringCount = (count: number) => {
-    const preset = GUITAR_PRESETS.find((candidate) => candidate.strings.length === count)
+    const preset = presets.find((candidate) => candidate.strings.length === count)
     if (preset) choosePreset(preset.id)
   }
 
@@ -80,7 +89,7 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
         <section className="settings-section">
           <h3>{tr('settings.stringCount')}</h3>
           <div className="segmented" aria-label={tr('settings.stringCount')}>
-            {[6, 7, 8].map((count) => (
+            {stringCounts.map((count) => (
               <button
                 type="button"
                 key={count}
@@ -101,7 +110,7 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
             onChange={(event) => choosePreset(event.target.value)}
           >
             {config.presetId === 'custom' && <option value="custom">{tr('settings.customTuning')}</option>}
-            {GUITAR_PRESETS.filter((preset) => preset.strings.length === config.strings.length).map(
+            {presets.filter((preset) => preset.strings.length === config.strings.length).map(
               (preset) => (
                 <option key={preset.id} value={preset.id}>
                   {presetLabel(preset)}
@@ -276,7 +285,7 @@ export function GuitarSettings({ preferences, onChange, onClose }: GuitarSetting
         <button
           type="button"
           className="secondary-button settings-reset"
-          onClick={() => onChange(structuredClone(DEFAULT_GUITAR_PREFERENCES))}
+          onClick={() => onChange(structuredClone(defaultPreferences))}
         >
           {tr('settings.reset')}
         </button>

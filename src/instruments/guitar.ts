@@ -6,6 +6,7 @@ import type {
   PerformancePattern,
   PlayableEvent,
 } from './types'
+import type { FrettedInstrumentSpec } from './fretted'
 import {
   CANONICAL_CAGED_TEMPLATES,
   CANONICAL_THREE_NPS_TEMPLATES,
@@ -173,11 +174,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-export function isGuitarConfig(value: unknown): value is GuitarConfig {
+export function isGuitarConfig(
+  value: unknown,
+  minStrings = 6,
+  maxStrings = 8,
+): value is GuitarConfig {
   if (!isRecord(value) || !Array.isArray(value.strings)) return false
   return (
-    value.strings.length >= 6 &&
-    value.strings.length <= 8 &&
+    value.strings.length >= minStrings &&
+    value.strings.length <= maxStrings &&
     value.strings.every((midi) => Number.isInteger(midi) && midi >= 12 && midi <= 96) &&
     Number.isInteger(value.frets) &&
     Number(value.frets) >= 12 &&
@@ -207,11 +212,15 @@ export function isVoicingConstraints(value: unknown): value is VoicingConstraint
   )
 }
 
-export function isGuitarPreferences(value: unknown): value is GuitarPreferences {
+export function isGuitarPreferences(
+  value: unknown,
+  minStrings = 6,
+  maxStrings = 8,
+): value is GuitarPreferences {
   if (!isRecord(value)) return false
   return (
     value.version === 1 &&
-    isGuitarConfig(value.config) &&
+    isGuitarConfig(value.config, minStrings, maxStrings) &&
     isVoicingConstraints(value.constraints) &&
     typeof value.showFingerings === 'boolean' &&
     (value.showScaleFingerings === undefined || typeof value.showScaleFingerings === 'boolean') &&
@@ -1010,8 +1019,22 @@ export const guitarModule: InstrumentModule<GuitarConfig> = {
     fingerings: true,
   },
   defaultConfig: DEFAULT_GUITAR_CONFIG,
-  validateConfig: isGuitarConfig,
+  validateConfig: (value): value is GuitarConfig => isGuitarConfig(value),
   locateScale: locateScaleOnFretboard,
   generatePatterns: generateGuitarPatterns,
   getChordEvents: fallbackChordEvents,
+}
+
+/** Reusable fretted chord-event fallback for other fretted instruments (bass). */
+export function frettedChordEvents(config: GuitarConfig, chord: ChordDefinition): PlayableEvent[] {
+  return fallbackChordEvents(config, chord)
+}
+
+export const guitarSpec: FrettedInstrumentSpec = {
+  id: 'electric-guitar',
+  presets: GUITAR_PRESETS,
+  stringCounts: [6, 7, 8],
+  storageKey: 'qfc.instrument.electric-guitar.v1',
+  defaultPreferences: DEFAULT_GUITAR_PREFERENCES,
+  validatePreferences: (value): value is GuitarPreferences => isGuitarPreferences(value, 6, 8),
 }

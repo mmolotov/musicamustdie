@@ -7,11 +7,10 @@ import type {
   PlayableEvent,
 } from '../instruments/types'
 import {
-  DEFAULT_GUITAR_PREFERENCES,
   generateGuitarPatterns,
   groupScalePatternsForDisplay,
+  guitarSpec,
   hasCagedTopology,
-  isGuitarPreferences,
   locateScaleOnFretboard,
   rankScalePatterns,
   scaleGenerationOptions,
@@ -21,6 +20,7 @@ import {
   type GuitarVoicing,
   type VoicingConstraints,
 } from '../instruments/guitar'
+import { getFrettedSpec } from '../instruments/fretted'
 import type { InstrumentWorkspaceProps } from '../instruments/uiRegistry'
 import type { ChordDefinition, ScaleDirection, ScaleNote } from '../music/types'
 import { ascendingScaleMidis, midiNearMiddleC } from '../music/playback'
@@ -824,10 +824,14 @@ export function GuitarWorkspace({
 }: InstrumentWorkspaceProps) {
   const tr = useT()
   const lang = useLang()
+  // Per-instrument tuning presets, string counts, storage key and defaults.
+  // The workspace is remounted on instrument change (key in App), so reading
+  // the spec once here is enough.
+  const spec = getFrettedSpec(shareState.instrument) ?? guitarSpec
   const [preferences, setPreferences] = usePersistentState<GuitarPreferences>(
-    'qfc.instrument.electric-guitar.v1',
-    structuredClone(DEFAULT_GUITAR_PREFERENCES),
-    isGuitarPreferences,
+    spec.storageKey,
+    structuredClone(spec.defaultPreferences),
+    spec.validatePreferences,
   )
   const synth = useSynth()
   const locations = useMemo(
@@ -902,6 +906,9 @@ export function GuitarWorkspace({
           preferences={preferences}
           onChange={setPreferences}
           onClose={onCloseSettings}
+          presets={spec.presets}
+          stringCounts={spec.stringCounts}
+          defaultPreferences={spec.defaultPreferences}
         />
       )}
     </>

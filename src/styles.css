@@ -153,6 +153,65 @@ h4 {
   background: var(--sage);
 }
 
+/* Instrument controls live in the details-hero topline (right side). */
+.topline-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.instrument-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.instrument-switch {
+  display: inline-flex;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(9, 11, 14, 0.55);
+}
+
+.instrument-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.instrument-switch button:hover {
+  color: #dce5df;
+}
+
+.instrument-switch button.is-active {
+  color: #0b0f0e;
+  background: var(--sage);
+  box-shadow: 0 0 14px rgba(183, 255, 42, 0.22);
+}
+
+.instrument-switch button svg {
+  flex: 0 0 auto;
+}
+
+.primary-button--compact {
+  min-height: 44px;
+  padding: 10px 18px;
+  font-size: 14px;
+}
+
 .brand__mark {
   position: relative;
   display: block;
@@ -2286,17 +2345,23 @@ footer {
   }
 
   .site-header {
-    align-items: flex-start;
+    align-items: center;
     padding: 17px 0;
   }
 
-  .header-actions {
-    gap: 5px;
+  .instrument-controls {
+    flex-wrap: wrap;
+    width: 100%;
   }
 
-  .instrument-badge,
-  .header-button {
-    display: none;
+  .instrument-switch {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .instrument-switch button {
+    flex: 1 1 auto;
+    justify-content: center;
   }
 
   .primary-button {
