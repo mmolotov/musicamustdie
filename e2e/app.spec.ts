@@ -108,6 +108,25 @@ test('мобильная версия не создаёт горизонталь
   await expect(page.getByRole('button', { name: 'Am минор' })).toBeVisible()
 })
 
+test('на HD-десктопе круг и состав тональности помещаются в первый экран', async ({ page }) => {
+  // Стопка «круг сверху, панель снизу» съедала весь экран 1366×768: панель
+  // начиналась ниже 1000px и до неё нужно было скроллить.
+  await page.setViewportSize({ width: 1366, height: 768 })
+  await page.goto('/')
+
+  const box = (selector: string) =>
+    page.locator(selector).evaluate((el) => {
+      const rect = el.getBoundingClientRect()
+      return { top: Math.round(rect.top), bottom: Math.round(rect.bottom) }
+    })
+
+  // Две колонки: панель стоит рядом с кругом, а не под ним.
+  expect((await box('.details-panel')).top).toBeLessThan(300)
+  // Круг помещается по высоте целиком.
+  expect((await box('.fifths-circle')).bottom).toBeLessThanOrEqual(768)
+  await expect(page.locator('.note-strip')).toBeInViewport()
+})
+
 test('мобильная версия: гриф гаммы прокручивается вбок, а таб следует за воспроизведением', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/?section=scales')
