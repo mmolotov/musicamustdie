@@ -11,9 +11,9 @@ test('полный раунд: барабан, ноты, гамма и акко�
   await page.goto('/?practice=1&seed=101')
 
   await expect(page.getByRole('heading', { name: 'Тональность не выбрана' })).toBeVisible()
-  // Круг перестаёт быть кликабельным, вкладки уступают место панели шагов.
-  await expect(page.getByRole('button', { name: 'G мажор' })).toHaveCount(0)
+  // Вкладки уступают место панели шагов, круг получает свою подпись.
   await expect(page.getByRole('button', { name: /Гамма и TAB/ })).toHaveCount(0)
+  await expect(page.getByText('Нажмите сектор, чтобы тренировать эту тональность')).toBeVisible()
 
   await page.getByRole('button', { name: 'Крутить барабан' }).click()
 
@@ -123,4 +123,33 @@ test('тренировка работает и на басу: своя библ�
   // У баса четыре струны — гриф и таб должны быть его собственными.
   await expect(page.locator('.practice-assignment > .fretboard-scroll .fretboard__string')).toHaveCount(4)
   await expect(page.locator('.practice-assignment .tab-grid__label')).toHaveCount(4)
+})
+
+test('переход между тональностями: клик по кругу и повтор', async ({ page }) => {
+  await page.goto('/?practice=1&seed=101')
+
+  // Барабан не обязателен: тональность можно взять руками с первого же раунда.
+  await page.getByRole('button', { name: 'A♭ мажор', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'A♭ · Ля♭ мажор' })).toBeVisible()
+  await expect(page.getByText('Раунд 1')).toBeVisible()
+  await expect(page.getByText(/Соберите гамму по ступеням/)).toBeVisible()
+
+  // Клик в середине раунда перебивает его на выбранную тональность.
+  await page.getByRole('button', { name: 'Dm минор', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'D · Ре минор' })).toBeVisible()
+  await expect(page.getByText('Раунд 2')).toBeVisible()
+
+  // Проходим раунд насквозь и повторяем ту же тональность.
+  await page.getByRole('button', { name: 'Не помню — показать' }).click()
+  await page.getByRole('button', { name: 'Дальше' }).click()
+  await page.getByRole('button', { name: 'Сыграл — показать' }).click()
+  await page.getByRole('button', { name: 'Не получилось' }).click()
+  await page.getByRole('button', { name: 'Не помню — показать' }).click()
+
+  await page.getByRole('button', { name: 'Ещё раз эту же' }).click()
+  await expect(page.getByRole('heading', { name: 'D · Ре минор' })).toBeVisible()
+  await expect(page.getByText('Раунд 3')).toBeVisible()
+  await expect(page.getByText(/Соберите гамму по ступеням/)).toBeVisible()
+  // Счёт сессии не обнуляется повтором.
+  await expect(page.locator('.practice-tally dd').nth(2)).toHaveText('2')
 })

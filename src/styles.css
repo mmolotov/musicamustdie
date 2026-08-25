@@ -3035,15 +3035,13 @@ footer {
   transform-origin: 300px 300px;
   fill: var(--sage);
   filter: drop-shadow(0 0 9px rgba(183, 255, 42, 0.7));
-  transition: transform 1.2s cubic-bezier(0.16, 0.84, 0.3, 1);
+  /* A key the player picked gets a short hop; only the wheel takes its time. */
+  transition: transform 420ms cubic-bezier(0.22, 0.75, 0.3, 1);
 }
 
-.circle-shell.is-locked .circle-hit {
-  cursor: default;
-}
-
-.circle-shell.is-locked .circle-hit:hover .circle-wedge {
-  filter: none;
+.circle-needle.is-spinning {
+  transition-duration: 1.2s;
+  transition-timing-function: cubic-bezier(0.16, 0.84, 0.3, 1);
 }
 
 .key-signature-badge.is-hidden {

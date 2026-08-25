@@ -93,7 +93,7 @@ export const ru: Record<string, string> = {
   'circle.minor': 'минор',
   'circle.selectedKey': 'выбрана тональность',
   'circle.help': 'Нажмите внешнюю часть для мажора, внутреннюю — для минора',
-  'circle.lockedHelp': 'В тренировке тональность выбирает барабан',
+  'circle.practiceHelp': 'Нажмите сектор, чтобы тренировать эту тональность',
 
   // tablature
   'tab.ascending': 'Восходящая',
@@ -259,6 +259,7 @@ export const ru: Record<string, string> = {
   'practice.reveal': 'Не помню — показать',
   'practice.next': 'Дальше',
   'practice.nextRound': 'Следующая тональность',
+  'practice.again': 'Ещё раз эту же',
   'practice.verdict.correct': 'Верно',
   'practice.verdict.wrong': 'Неверно',
   'practice.verdict.skipped': 'Пропущено',
@@ -352,7 +353,7 @@ export const en: Record<string, string> = {
   'circle.minor': 'minor',
   'circle.selectedKey': 'selected key',
   'circle.help': 'Click the outer part for major, the inner part for minor',
-  'circle.lockedHelp': 'In practice the wheel picks the key',
+  'circle.practiceHelp': 'Click a wedge to drill that key',
 
   'tab.ascending': 'Ascending',
   'tab.descending': 'Descending',
@@ -511,6 +512,7 @@ export const en: Record<string, string> = {
   'practice.reveal': 'Reveal the answer',
   'practice.next': 'Next',
   'practice.nextRound': 'Next key',
+  'practice.again': 'Same key again',
   'practice.verdict.correct': 'Correct',
   'practice.verdict.wrong': 'Wrong',
   'practice.verdict.skipped': 'Skipped',

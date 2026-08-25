@@ -30,6 +30,11 @@ function isSameKey(a: KeySelection, b: KeySelection): boolean {
   return a.tonic === b.tonic && a.mode === b.mode
 }
 
+/** Which wedge a key sits on — the needle points at sectors, not at keys. */
+export function sectorIndexOf(selection: KeySelection): number {
+  return CIRCLE_KEYS.find((candidate) => isSameKey(candidate.selection, selection))?.sectorIndex ?? 0
+}
+
 export interface KeyDraw {
   key: CircleKey
   seed: number

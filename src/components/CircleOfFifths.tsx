@@ -20,8 +20,8 @@ interface CircleOfFifthsProps {
    */
   needleAngle?: number | null
   spinning?: boolean
-  /** Practice mode draws the key — clicking a wedge must not change it. */
-  locked?: boolean
+  /** Replaces the caption under the circle. */
+  caption?: string
   /** The signature is an answer while the note step is open. */
   hideSignature?: boolean
 }
@@ -87,7 +87,7 @@ export function CircleOfFifths({
   onSelect,
   needleAngle = null,
   spinning = false,
-  locked = false,
+  caption,
   hideSignature = false,
 }: CircleOfFifthsProps) {
   const tr = useT()
@@ -124,7 +124,7 @@ export function CircleOfFifths({
   }
 
   return (
-    <div className={locked ? 'circle-shell is-locked' : 'circle-shell'}>
+    <div className="circle-shell">
       <div className="circle-direction circle-direction--left">
         <span aria-hidden="true">←</span> {tr('circle.left')}
       </div>
@@ -158,12 +158,12 @@ export function CircleOfFifths({
           return (
             <g key={majorPitch} className={sectorSelected ? 'circle-sector is-family-selected' : 'circle-sector'}>
               <g
-                role={locked ? undefined : 'button'}
-                tabIndex={locked ? undefined : 0}
+                role="button"
+                tabIndex={0}
                 aria-label={tr('circle.majorAria', { note: majorSectorLabel(majorPitch) })}
-                aria-pressed={locked ? undefined : outerSelected}
-                onClick={locked ? undefined : () => selectSector(majorPitch, 'major')}
-                onKeyDown={locked ? undefined : (event) => handleKeyDown(event, index, 'major')}
+                aria-pressed={outerSelected}
+                onClick={() => selectSector(majorPitch, 'major')}
+                onKeyDown={(event) => handleKeyDown(event, index, 'major')}
                 className={outerSelected ? 'circle-hit is-selected' : 'circle-hit'}
               >
                 <path
@@ -191,12 +191,12 @@ export function CircleOfFifths({
                 </text>
               </g>
               <g
-                role={locked ? undefined : 'button'}
-                tabIndex={locked ? undefined : 0}
+                role="button"
+                tabIndex={0}
                 aria-label={tr('circle.minorAria', { note: minorSectorLabel(majorPitch) })}
-                aria-pressed={locked ? undefined : innerSelected}
-                onClick={locked ? undefined : () => selectSector(majorPitch, 'minor')}
-                onKeyDown={locked ? undefined : (event) => handleKeyDown(event, index, 'minor')}
+                aria-pressed={innerSelected}
+                onClick={() => selectSector(majorPitch, 'minor')}
+                onKeyDown={(event) => handleKeyDown(event, index, 'minor')}
                 className={innerSelected ? 'circle-hit is-selected' : 'circle-hit'}
               >
                 <path
@@ -240,7 +240,7 @@ export function CircleOfFifths({
           </g>
         )}
       </svg>
-      <p className="circle-help">{locked ? tr('circle.lockedHelp') : tr('circle.help')}</p>
+      <p className="circle-help">{caption ?? tr('circle.help')}</p>
     </div>
   )
 }

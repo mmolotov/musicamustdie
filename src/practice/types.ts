@@ -46,6 +46,8 @@ export interface PracticeState {
 export type PracticeAction =
   | { type: 'spin' }
   | { type: 'spinEnded' }
+  /** Starts a round on a key the player chose, skipping the wheel. */
+  | { type: 'pick'; selection: KeySelection; sectorIndex: number }
   /** Shows the answer without grading it — the self-checked fretboard step. */
   | { type: 'reveal' }
   | { type: 'answer'; outcome: StepOutcome }

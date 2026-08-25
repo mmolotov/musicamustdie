@@ -31,20 +31,24 @@ describe('CircleOfFifths', () => {
     expect(onSelect).toHaveBeenCalledWith({ tonic: 7, mode: 'major', spelling: 'sharp' })
   })
 
-  it('в режиме тренировки секторы не кликаются, а стрелка отрисована', () => {
+  it('в тренировке рисует стрелку и свою подпись, но остаётся кликабельным', () => {
     const onSelect = vi.fn()
     const { container } = render(
       <CircleOfFifths
         selection={{ tonic: 0, mode: 'major', spelling: 'sharp' }}
         onSelect={onSelect}
-        locked
+        caption="Нажмите сектор, чтобы тренировать эту тональность"
         needleAngle={1530}
+        hideSignature
       />,
     )
 
-    expect(screen.queryByRole('button', { name: 'G мажор' })).not.toBeInTheDocument()
     expect(container.querySelector('.circle-needle')).toBeInTheDocument()
-    expect(screen.getByText('В тренировке тональность выбирает барабан')).toBeInTheDocument()
-    expect(onSelect).not.toHaveBeenCalled()
+    expect(screen.getByText('Нажмите сектор, чтобы тренировать эту тональность')).toBeInTheDocument()
+    // Знаки при ключе — ответ на первый шаг, поэтому в центре их не видно.
+    expect(screen.queryByText('без знаков')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Am минор' }))
+    expect(onSelect).toHaveBeenCalledWith({ tonic: 9, mode: 'minor', spelling: 'sharp' })
   })
 })

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { initialPracticeState, practiceReducer } from '../practice/machine'
+import { sectorIndexOf } from '../practice/keys'
+import type { KeySelection } from '../music/types'
 import type { PracticeAction, PracticeState, StepOutcome } from '../practice/types'
 
 /** How long the needle takes to settle, in step with the CSS transition. */
@@ -10,6 +12,8 @@ export interface PracticeControls {
   spin: () => void
   /** Stops the needle early — the wheel is fun exactly twice. */
   landNeedle: () => void
+  /** Starts a round on a chosen key, from wherever the player was. */
+  pick: (selection: KeySelection) => void
   /** Shows the answer without grading it, for the self-checked steps. */
   reveal: () => void
   answer: (outcome: StepOutcome) => void
@@ -62,6 +66,13 @@ export function usePractice(): PracticeControls {
 
   useEffect(() => clearSpinTimer, [clearSpinTimer])
 
+  const pick = useCallback(
+    (selection: KeySelection) => {
+      clearSpinTimer()
+      dispatch({ type: 'pick', selection, sectorIndex: sectorIndexOf(selection) })
+    },
+    [clearSpinTimer, dispatch],
+  )
   const reveal = useCallback(() => dispatch({ type: 'reveal' }), [dispatch])
   const answer = useCallback(
     (outcome: StepOutcome) => dispatch({ type: 'answer', outcome }),
@@ -69,5 +80,5 @@ export function usePractice(): PracticeControls {
   )
   const next = useCallback(() => dispatch({ type: 'next' }), [dispatch])
 
-  return { state, spin, landNeedle, reveal, answer, next }
+  return { state, spin, landNeedle, pick, reveal, answer, next }
 }

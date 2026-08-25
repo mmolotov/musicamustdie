@@ -161,8 +161,12 @@ export default function App() {
           <section className="circle-panel" aria-label={tr('circle.panelAria')}>
             <CircleOfFifths
               selection={selection}
-              onSelect={(next) => setShareState((state) => ({ ...state, selection: next }))}
-              locked={practiceActive}
+              onSelect={(next) =>
+                practiceActive
+                  ? practice.pick(next)
+                  : setShareState((state) => ({ ...state, selection: next }))
+              }
+              caption={practiceActive ? tr('circle.practiceHelp') : undefined}
               hideSignature={hintsHidden}
               needleAngle={practiceActive ? practice.state.needleAngle : null}
               spinning={practice.state.phase === 'spinning'}
@@ -327,6 +331,9 @@ export default function App() {
                 harmony={harmony}
                 onSpin={practice.spin}
                 onLandNeedle={practice.landNeedle}
+                onRepeat={() => {
+                  if (practice.state.selection) practice.pick(practice.state.selection)
+                }}
                 onReveal={practice.reveal}
                 onAnswer={practice.answer}
                 onNext={practice.next}

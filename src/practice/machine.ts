@@ -44,6 +44,23 @@ export function nextNeedleAngle(current: number, sectorIndex: number, turns = SP
   return current + turns * 360 + delta
 }
 
+interface RoundAssignment {
+  seed: number
+  chordDegree: number
+  patternPick: number
+}
+
+/**
+ * The rest of a round: which degree the chord step asks about and which shape
+ * the fretboard step assigns. Drawn together with the key so the whole round
+ * replays from one seed.
+ */
+function drawAssignment(seed: number): RoundAssignment {
+  const degree = nextInt(seed, 7)
+  const pattern = nextRandom(degree.seed)
+  return { seed: pattern.seed, chordDegree: degree.value + 1, patternPick: pattern.value }
+}
+
 function bumpTally(tally: PracticeTally, outcome: StepOutcome): PracticeTally {
   return { ...tally, [outcome]: tally[outcome] + 1 }
 }
@@ -52,20 +69,34 @@ export function practiceReducer(state: PracticeState, action: PracticeAction): P
   switch (action.type) {
     case 'spin': {
       if (state.phase === 'spinning') return state
-      // The whole round is drawn at once so every step of it replays from the
-      // same seed: the key, the degree the chord step asks about, and the
-      // fingering the scale step assigns.
       const key = drawKey(state.seed, state.selection)
-      const degree = nextInt(key.seed, 7)
-      const pattern = nextRandom(degree.seed)
+      const assignment = drawAssignment(key.seed)
       return {
         ...state,
         phase: 'spinning',
-        seed: pattern.seed,
+        seed: assignment.seed,
         pending: key.key.selection,
         needleAngle: nextNeedleAngle(state.needleAngle, key.key.sectorIndex),
-        chordDegree: degree.value + 1,
-        patternPick: pattern.value,
+        chordDegree: assignment.chordDegree,
+        patternPick: assignment.patternPick,
+        stepIndex: 0,
+        outcome: null,
+      }
+    }
+    case 'pick': {
+      // A chosen key needs no wheel: the needle takes the short way round and
+      // the round starts at once, from whatever the player was doing before.
+      const assignment = drawAssignment(state.seed)
+      return {
+        ...state,
+        phase: 'answering',
+        seed: assignment.seed,
+        selection: action.selection,
+        pending: null,
+        needleAngle: nextNeedleAngle(state.needleAngle, action.sectorIndex, 0),
+        chordDegree: assignment.chordDegree,
+        patternPick: assignment.patternPick,
+        round: state.round + 1,
         stepIndex: 0,
         outcome: null,
       }

@@ -6,6 +6,8 @@ import {
   nextNeedleAngle,
   practiceReducer,
 } from './machine'
+import { sectorIndexOf } from './keys'
+import type { KeySelection } from '../music/types'
 import type { PracticeState } from './types'
 
 function spinTo(state: PracticeState): PracticeState {
@@ -109,6 +111,52 @@ describe('машина состояний тренировки', () => {
     const second = spinTo(first)
     expect(second.selection).not.toEqual(first.selection)
     expect(second.round).toBe(2)
+  })
+})
+
+describe('выбор тональности вручную', () => {
+  const aFlatMajor: KeySelection = { tonic: 8, mode: 'major', spelling: 'flat' }
+
+  function pick(state: PracticeState, selection: KeySelection): PracticeState {
+    return practiceReducer(state, {
+      type: 'pick',
+      selection,
+      sectorIndex: sectorIndexOf(selection),
+    })
+  }
+
+  it('начинает раунд сразу, без фазы вращения', () => {
+    const picked = pick(initialPracticeState(9), aFlatMajor)
+    expect(picked.phase).toBe('answering')
+    expect(picked.selection).toEqual(aFlatMajor)
+    expect(picked.pending).toBeNull()
+    expect(picked.round).toBe(1)
+    expect(currentStep(picked)).toBe('notes')
+    // Стрелка идёт коротким путём: меньше полного оборота.
+    expect(picked.needleAngle % 360).toBe(sectorIndexOf(aFlatMajor) * 30)
+    expect(picked.needleAngle).toBeLessThan(360)
+  })
+
+  it('перебивает начатый раунд из любой фазы', () => {
+    let state = spinTo(initialPracticeState(3))
+    state = practiceReducer(state, { type: 'answer', outcome: 'wrong' })
+    const picked = pick(state, aFlatMajor)
+    expect(picked.selection).toEqual(aFlatMajor)
+    expect(picked.stepIndex).toBe(0)
+    expect(picked.outcome).toBeNull()
+    // Счёт сессии не сбрасывается.
+    expect(picked.tally).toEqual(state.tally)
+  })
+
+  it('повтор той же тональности даёт новое задание', () => {
+    const first = spinTo(initialPracticeState(101))
+    const again = pick(first, first.selection!)
+    expect(again.selection).toEqual(first.selection)
+    expect(again.round).toBe(2)
+    // Стрелка уже на месте, а задание раунда другое.
+    expect(again.needleAngle).toBe(first.needleAngle)
+    expect([again.chordDegree, again.patternPick])
+      .not.toEqual([first.chordDegree, first.patternPick])
   })
 })
 

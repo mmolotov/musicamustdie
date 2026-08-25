@@ -190,6 +190,8 @@ export interface PracticePanelProps {
   harmony: HarmonizedDegree[]
   onSpin: () => void
   onLandNeedle: () => void
+  /** Runs the same key again — a fresh degree and a fresh fingering. */
+  onRepeat: () => void
   onReveal: () => void
   onAnswer: (outcome: StepOutcome) => void
   onNext: () => void
@@ -203,6 +205,7 @@ export function PracticePanel({
   harmony,
   onSpin,
   onLandNeedle,
+  onRepeat,
   onReveal,
   onAnswer,
   onNext,
@@ -236,6 +239,11 @@ export function PracticePanel({
     // The last step rolls straight into the next key: an extra "spin again"
     // screen between every round is pure friction.
     if (isLastStep) onSpin()
+  }
+
+  const repeat = () => {
+    resetInputs()
+    onRepeat()
   }
 
   const gradeAndAdvance = (outcome: StepOutcome) => {
@@ -420,9 +428,16 @@ export function PracticePanel({
                     </button>
                   </>
                 ) : (
-                  <button type="button" className="primary-button" onClick={advance}>
-                    {isLastStep ? tr('practice.nextRound') : tr('practice.next')}
-                  </button>
+                  <>
+                    <button type="button" className="primary-button" onClick={advance}>
+                      {isLastStep ? tr('practice.nextRound') : tr('practice.next')}
+                    </button>
+                    {isLastStep && (
+                      <button type="button" className="secondary-button" onClick={repeat}>
+                        {tr('practice.again')}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </>
