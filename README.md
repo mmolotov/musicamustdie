@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/mmolotov/musicamustdie/actions/workflows/ci.yml/badge.svg)](https://github.com/mmolotov/musicamustdie/actions/workflows/ci.yml)
 
+**[Open the app →](https://mmolotov.github.io/musicamustdie/)**
+
 An interactive circle of fourths and fifths for guitar: fretboard map, a library of CAGED / positional / 3NPS / one-octave / hybrid two-octave / diagonal fingerings, tablature, diatonic chords, a practice-form generator, and a practice mode that spins the wheel for a random key and drills its notes, fingering and chords with every hint hidden until you answer.
 
 Built with React, TypeScript, and Vite. The app is fully static and needs no application server.
@@ -29,6 +31,9 @@ npm run dev
 npm run build     # output in dist/
 npm run preview   # serve the production build locally
 ```
+
+Every push to `main` deploys to GitHub Pages at
+<https://mmolotov.github.io/musicamustdie/> (see `.github/workflows/deploy.yml`).
 
 ## Tests
 
