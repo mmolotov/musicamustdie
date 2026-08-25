@@ -66,10 +66,15 @@ export default function App() {
     practice.state.stepIndex > notesStepIndex ||
     (practice.state.stepIndex === notesStepIndex && practiceRevealed)
   const hintsHidden = practiceActive && !notesAnswered
+  // Everything the workspace draws is part of some answer, so it only appears
+  // once the step has been revealed. The fretboard step is the exception: its
+  // assignment is the question.
+  const practiceShowsWorkspace =
+    practiceStep === 'scale' || (practiceStep !== null && practiceRevealed)
   // The fingering library and the chord shapes live in the instrument module,
-  // so those two steps hand the round's draw over and let it resolve them.
+  // so the round hands its draw over and lets the module resolve it.
   const practiceDelegate: PracticeDelegate | undefined =
-    practiceStep === 'scale' || (practiceStep === 'chord' && practiceRevealed)
+    practiceStep !== null && practiceShowsWorkspace
       ? {
           step: practiceStep,
           pick: practice.state.patternPick,
@@ -77,10 +82,6 @@ export default function App() {
           revealed: practiceRevealed,
         }
       : undefined
-  // Everything the workspace draws is part of some answer, so it only appears
-  // on the steps that have been revealed.
-  const practiceShowsWorkspace =
-    practiceDelegate !== undefined || (practiceStep === 'notes' && practiceRevealed)
   const practiceSection: DetailSection =
     practiceStep === 'scale' ? 'scales' : practiceStep === 'chord' ? 'chords' : 'notes'
   // Practice always drills the ascending form; the descending melodic minor is

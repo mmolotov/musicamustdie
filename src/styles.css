@@ -3493,3 +3493,30 @@ footer {
     flex: 1;
   }
 }
+
+/* Practice keeps the whole neck one click away instead of on the page. */
+.full-neck-panel {
+  margin: 22px 0 0;
+  background: #0d1013;
+}
+
+.full-neck-panel__body {
+  padding: 16px 16px 18px;
+  border-top: 1px solid var(--line);
+}
+
+.full-neck-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.full-neck-toolbar p {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--muted);
+  font-size: 12px;
+}

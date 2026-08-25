@@ -183,6 +183,55 @@ function LabelModeToggle({
   )
 }
 
+interface FullNeckProps {
+  locations: FretLocation[]
+  preferences: GuitarPreferences
+  onPreferencesChange: (preferences: GuitarPreferences) => void
+  playMidi: (midi: number) => void
+  /** Practice puts its own caption on the disclosure that wraps this. */
+  withHeading?: boolean
+}
+
+/** Every scale note across the whole neck. */
+function FullNeck({
+  locations,
+  preferences,
+  onPreferencesChange,
+  playMidi,
+  withHeading = true,
+}: FullNeckProps) {
+  const tr = useT()
+  return (
+    <>
+      {withHeading ? (
+        <div className="subsection-heading">
+          <div>
+            <h4>{tr('ws.allNotes')}</h4>
+            <p>{tr('ws.allNotesHint')}</p>
+          </div>
+          <LabelModeToggle preferences={preferences} onChange={onPreferencesChange} />
+        </div>
+      ) : (
+        <div className="full-neck-toolbar">
+          <p>{tr('ws.allNotesHint')}</p>
+          <LabelModeToggle preferences={preferences} onChange={onPreferencesChange} />
+        </div>
+      )}
+      <Fretboard
+        config={preferences.config}
+        locations={locations}
+        labelMode={preferences.fretboardLabels}
+        onPlayNote={playMidi}
+      />
+      <div className="fretboard-legend" aria-label={tr('ws.fretboardLegendAria')}>
+        <span><i className="legend-dot legend-dot--root" /> {tr('ws.tonic')}</span>
+        <span><i className="legend-dot" /> {tr('ws.scaleNotes')}</span>
+        <span>{tr('ws.fullRange', { frets: preferences.config.frets })}</span>
+      </div>
+    </>
+  )
+}
+
 interface NotesViewProps {
   activeNotes: ScaleNote[]
   locations: FretLocation[]
@@ -191,6 +240,8 @@ interface NotesViewProps {
   direction: ScaleDirection
   playMidi: (midi: number) => void
   playScale: () => void
+  /** Practice moves the whole neck onto the fretboard step, behind a click. */
+  showFullNeck?: boolean
 }
 
 function NotesView({
@@ -201,6 +252,7 @@ function NotesView({
   direction,
   playMidi,
   playScale,
+  showFullNeck = true,
 }: NotesViewProps) {
   const tr = useT()
   const noteMidis = ascendingScaleMidis(activeNotes)
@@ -234,24 +286,14 @@ function NotesView({
         ))}
       </div>
 
-      <div className="subsection-heading">
-        <div>
-          <h4>{tr('ws.allNotes')}</h4>
-          <p>{tr('ws.allNotesHint')}</p>
-        </div>
-        <LabelModeToggle preferences={preferences} onChange={onPreferencesChange} />
-      </div>
-      <Fretboard
-        config={preferences.config}
-        locations={locations}
-        labelMode={preferences.fretboardLabels}
-        onPlayNote={playMidi}
-      />
-      <div className="fretboard-legend" aria-label={tr('ws.fretboardLegendAria')}>
-        <span><i className="legend-dot legend-dot--root" /> {tr('ws.tonic')}</span>
-        <span><i className="legend-dot" /> {tr('ws.scaleNotes')}</span>
-        <span>{tr('ws.fullRange', { frets: preferences.config.frets })}</span>
-      </div>
+      {showFullNeck && (
+        <FullNeck
+          locations={locations}
+          preferences={preferences}
+          onPreferencesChange={onPreferencesChange}
+          playMidi={playMidi}
+        />
+      )}
     </section>
   )
 }
@@ -550,7 +592,9 @@ function upAndDownEvents(route: PatternRoute): PlayableEvent[] {
 
 interface PracticeScaleViewProps {
   patterns: PerformancePattern<FretLocation>[]
+  locations: FretLocation[]
   preferences: GuitarPreferences
+  onPreferencesChange: (preferences: GuitarPreferences) => void
   pick: number
   revealed: boolean
   playMidi: (midi: number) => void
@@ -564,7 +608,9 @@ interface PracticeScaleViewProps {
  */
 function PracticeScaleView({
   patterns,
+  locations,
   preferences,
+  onPreferencesChange,
   pick,
   revealed,
   playMidi,
@@ -655,6 +701,22 @@ function PracticeScaleView({
           />
         </>
       )}
+
+      <details className="filter-panel full-neck-panel">
+        <summary>
+          <span>{tr('ws.allNotes')}</span>
+          <span className="filter-summary">{tr('practice.neckHint')}</span>
+        </summary>
+        <div className="full-neck-panel__body">
+          <FullNeck
+            locations={locations}
+            preferences={preferences}
+            onPreferencesChange={onPreferencesChange}
+            playMidi={playMidi}
+            withHeading={false}
+          />
+        </div>
+      </details>
     </div>
   )
 }
@@ -1047,7 +1109,9 @@ export function GuitarWorkspace({
       {practice?.step === 'scale' && (
         <PracticeScaleView
           patterns={patterns}
+          locations={locations}
           preferences={preferences}
+          onPreferencesChange={setPreferences}
           pick={practice.pick}
           revealed={practice.revealed}
           playMidi={playMidi}
@@ -1064,6 +1128,7 @@ export function GuitarWorkspace({
           direction={shareState.direction}
           playMidi={playMidi}
           playScale={playScale}
+          showFullNeck={practice === undefined}
         />
       )}
       {practice?.step !== 'scale' && section === 'scales' && (

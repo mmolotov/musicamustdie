@@ -8,7 +8,7 @@ import type { DetailSection, ShareState } from '../hooks/useUrlState'
  * lets the instrument resolve it into a concrete assignment.
  */
 export interface PracticeDelegate {
-  step: 'scale' | 'chord'
+  step: 'notes' | 'scale' | 'chord'
   /** Deterministic pick for this round, in [0, 1). */
   pick: number
   /** 1-based scale degree the chord step asks about. */

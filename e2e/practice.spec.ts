@@ -35,6 +35,8 @@ test('полный раунд: барабан, ноты, гамма и акко�
   await expect(page.locator('.note-answer')).toHaveCount(0)
   // Гриф — часть ответа, поэтому появляется только после проверки.
   await expect(page.getByRole('heading', { name: 'Семь ступеней' })).toBeVisible()
+  // Гриф целиком переехал на шаг гаммы — здесь только состав.
+  await expect(page.locator('.fretboard-scroll')).toHaveCount(0)
   await expect(page.locator('.key-signature-badge')).toContainText('1 диез')
   await expect(page.locator('.circle-center__signature')).toHaveText('1 диез')
 
@@ -47,10 +49,14 @@ test('полный раунд: барабан, ноты, гамма и акко�
   // Ноты уже названы, так что знаки больше не прячем.
   await expect(page.locator('.key-signature-badge')).toContainText('1 диез')
   // Диаграмма и таб закрыты, пока не сыграно.
-  await expect(page.locator('.fretboard-scroll')).toHaveCount(0)
+  await expect(page.locator('.practice-assignment > .fretboard-scroll')).toHaveCount(0)
+  // Весь гриф здесь есть, но свёрнут — открывается только по клику.
+  await expect(page.locator('.full-neck-panel .fretboard-scroll')).toBeHidden()
+  await page.getByText('Все ноты на грифе', { exact: true }).click()
+  await expect(page.locator('.full-neck-panel .fretboard-scroll')).toBeVisible()
 
   await page.getByRole('button', { name: 'Сыграл — показать' }).click()
-  await expect(page.locator('.practice-assignment .fretboard-scroll')).toBeVisible()
+  await expect(page.locator('.practice-assignment > .fretboard-scroll')).toBeVisible()
   await expect(page.locator('.practice-assignment .tab-card')).toBeVisible()
   await page.getByRole('button', { name: 'Получилось', exact: true }).click()
 
@@ -115,6 +121,6 @@ test('тренировка работает и на басу: своя библ�
   await expect(page.locator('.practice-assignment h4')).toBeVisible()
   await page.getByRole('button', { name: 'Сыграл — показать' }).click()
   // У баса четыре струны — гриф и таб должны быть его собственными.
-  await expect(page.locator('.practice-assignment .fretboard__string')).toHaveCount(4)
+  await expect(page.locator('.practice-assignment > .fretboard-scroll .fretboard__string')).toHaveCount(4)
   await expect(page.locator('.practice-assignment .tab-grid__label')).toHaveCount(4)
 })
