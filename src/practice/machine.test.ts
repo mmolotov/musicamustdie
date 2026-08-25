@@ -29,28 +29,23 @@ describe('машина состояний тренировки', () => {
     expect(answering.selection).toEqual(spinning.pending)
     expect(answering.pending).toBeNull()
     expect(answering.round).toBe(1)
-    expect(currentStep(answering)).toBe('signature')
+    expect(currentStep(answering)).toBe('notes')
   })
 
-  it('проходит все четыре шага раунда и возвращается к барабану', () => {
+  it('проходит все шаги раунда и возвращается к барабану', () => {
     const first = spinTo(initialPracticeState(5))
-    expect(currentStep(first)).toBe('signature')
+    expect(currentStep(first)).toBe('notes')
 
     const graded = practiceReducer(first, { type: 'answer', outcome: 'correct' })
     expect(graded.phase).toBe('revealed')
     expect(graded.tally).toEqual({ correct: 1, wrong: 0, skipped: 0 })
 
-    const notes = practiceReducer(graded, { type: 'next' })
-    expect(currentStep(notes)).toBe('notes')
-    expect(notes.outcome).toBeNull()
-    const notesDone = practiceReducer(notes, { type: 'answer', outcome: 'skipped' })
-    expect(notesDone.tally).toEqual({ correct: 1, wrong: 0, skipped: 1 })
-
-    const scale = practiceReducer(notesDone, { type: 'next' })
+    const scale = practiceReducer(graded, { type: 'next' })
     expect(currentStep(scale)).toBe('scale')
+    expect(scale.outcome).toBeNull()
 
     const chord = practiceReducer(
-      practiceReducer(scale, { type: 'answer', outcome: 'correct' }),
+      practiceReducer(scale, { type: 'answer', outcome: 'skipped' }),
       { type: 'next' },
     )
     expect(currentStep(chord)).toBe('chord')
@@ -61,7 +56,7 @@ describe('машина состояний тренировки', () => {
     )
     expect(done.phase).toBe('idle')
     expect(done.stepIndex).toBe(0)
-    expect(done.tally).toEqual({ correct: 2, wrong: 1, skipped: 1 })
+    expect(done.tally).toEqual({ correct: 1, wrong: 1, skipped: 1 })
     // Тональность остаётся выбранной, чтобы круг не гас между раундами.
     expect(done.selection).toEqual(first.selection)
   })

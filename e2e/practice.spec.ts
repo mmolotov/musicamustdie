@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
 })
 
-test('полный раунд: барабан, знаки, ноты, гамма и аккорд', async ({ page }) => {
+test('полный раунд: барабан, ноты, гамма и аккорд', async ({ page }) => {
   await page.goto('/?practice=1&seed=101')
 
   await expect(page.getByRole('heading', { name: 'Тональность не выбрана' })).toBeVisible()
@@ -17,19 +17,10 @@ test('полный раунд: барабан, знаки, ноты, гамма 
 
   await page.getByRole('button', { name: 'Крутить барабан' }).click()
 
-  // Шаг 1 — знаки. Тональность видна, знаки при ключе спрятаны.
+  // Шаг 1 — ноты. Тональность видна, знаки при ключе спрятаны в обоих местах.
   await expect(page.getByRole('heading', { name: 'E · Ми минор' })).toBeVisible()
   await expect(page.locator('.key-signature-badge')).toContainText('скрыто')
-  await expect(page.getByText('Сколько знаков при ключе: E · Ми натуральный минор?')).toBeVisible()
-
-  await page.getByRole('button', { name: '1', exact: true }).click()
-  await page.getByRole('button', { name: '♯ диезы' }).click()
-  await page.getByRole('button', { name: 'Проверить' }).click()
-  await expect(page.locator('.practice-verdict')).toHaveText('Верно')
-  await expect(page.locator('.key-signature-badge')).toContainText('1 диез')
-
-  // Шаг 2 — ноты.
-  await page.getByRole('button', { name: 'Дальше' }).click()
+  await expect(page.locator('.circle-center__signature')).toHaveText('скрыто')
   await expect(page.getByText('Соберите гамму по ступеням: E · Ми натуральный минор')).toBeVisible()
   await expect(page.getByText('Введено 0 из 7')).toBeVisible()
 
@@ -44,13 +35,17 @@ test('полный раунд: барабан, знаки, ноты, гамма 
   await expect(page.locator('.note-answer')).toHaveCount(0)
   // Гриф — часть ответа, поэтому появляется только после проверки.
   await expect(page.getByRole('heading', { name: 'Семь ступеней' })).toBeVisible()
+  await expect(page.locator('.key-signature-badge')).toContainText('1 диез')
+  await expect(page.locator('.circle-center__signature')).toHaveText('1 диез')
 
-  // Шаг 3 — гамма: приложение само назначает аппликатуру и даёт метроном.
+  // Шаг 2 — гамма: приложение само назначает аппликатуру и даёт метроном.
   await page.getByRole('button', { name: 'Дальше' }).click()
   await expect(page.getByText(/Сыграйте гамму вверх и вниз в этой аппликатуре/)).toBeVisible()
   await expect(page.locator('.practice-assignment h4')).toBeVisible()
   await expect(page.locator('.practice-assignment__head p')).toContainText('лады')
   await expect(page.getByRole('button', { name: /Метроном/ })).toBeVisible()
+  // Ноты уже названы, так что знаки больше не прячем.
+  await expect(page.locator('.key-signature-badge')).toContainText('1 диез')
   // Диаграмма и таб закрыты, пока не сыграно.
   await expect(page.locator('.fretboard-scroll')).toHaveCount(0)
 
@@ -59,42 +54,35 @@ test('полный раунд: барабан, знаки, ноты, гамма 
   await expect(page.locator('.practice-assignment .tab-card')).toBeVisible()
   await page.getByRole('button', { name: 'Получилось', exact: true }).click()
 
-  // Шаг 4 — аккорд на VI ступени ми минора, то есть до мажор.
+  // Шаг 3 — аккорд на VI ступени ми минора, то есть до мажор.
   await expect(page.getByText('Какое трезвучие на VI ступени: E · Ми натуральный минор?')).toBeVisible()
   await page.getByRole('button', { name: 'До', exact: true }).click()
   await page.getByRole('button', { name: 'Мажорное' }).click()
   await page.getByRole('button', { name: 'Проверить' }).click()
   await expect(page.locator('.practice-verdict')).toHaveText('Верно')
   // Разбор не нужен — ниже раскрывается обычный вид аккордов на той же ступени.
-  await expect(page.locator('.signature-answer')).toHaveCount(0)
+  await expect(page.locator('.practice-answer')).toHaveCount(0)
   await expect(page.locator('.selected-chord-summary__symbol')).toHaveText('C')
-  await expect(page.locator('.practice-tally dd').first()).toHaveText('4')
+  await expect(page.locator('.practice-tally dd').first()).toHaveText('3')
 
-  // Последний шаг сразу запускает следующую тональность.
+  // Последний шаг сразу запускает следующую тональность, и подсказки снова гаснут.
   await page.getByRole('button', { name: 'Следующая тональность' }).click()
   await expect(page.getByRole('heading', { name: 'B♭ · Си♭ минор' })).toBeVisible()
   await expect(page.getByText('Раунд 2')).toBeVisible()
+  await expect(page.locator('.key-signature-badge')).toContainText('скрыто')
 
   await page.getByRole('button', { name: 'Выйти из тренировки' }).click()
   await expect(page.getByRole('button', { name: /Гамма и TAB/ })).toBeVisible()
 })
 
-test('энгармония, пропуск подсказки и разбор ошибки в аккорде', async ({ page }) => {
+test('пропуск подсказки и разбор ошибки в аккорде', async ({ page }) => {
   await page.goto('/?practice=1&seed=1')
   await page.getByRole('button', { name: 'Крутить барабан' }).click()
 
-  // Си-бемоль минор он же Ля-диез минор: 5 бемолей и 7 диезов одинаково верны.
   await expect(page.getByRole('heading', { name: 'B♭ · Си♭ минор' })).toBeVisible()
-  await page.getByRole('button', { name: '7', exact: true }).click()
-  await page.getByRole('button', { name: '♯ диезы' }).click()
-  await page.getByRole('button', { name: 'Проверить' }).click()
-
-  await expect(page.locator('.practice-verdict')).toHaveText('Верно')
-  await expect(page.getByText('Также верно: 7 диезов')).toBeVisible()
-
-  await page.getByRole('button', { name: 'Дальше' }).click()
   await page.getByRole('button', { name: 'Не помню — показать' }).click()
   await expect(page.locator('.practice-verdict')).toHaveText('Пропущено')
+  // Раскрытие учит написанию: бемоли, а не энгармонические диезы.
   await expect(page.locator('.note-answer strong')).toHaveText([
     'B♭', 'C', 'D♭', 'E♭', 'F', 'G♭', 'A♭',
   ])
@@ -110,7 +98,7 @@ test('энгармония, пропуск подсказки и разбор о
   await page.getByRole('button', { name: 'Проверить' }).click()
 
   await expect(page.locator('.practice-verdict')).toHaveText('Неверно')
-  await expect(page.locator('.signature-answer strong')).toHaveText('i · B♭m')
+  await expect(page.locator('.practice-answer strong')).toHaveText('i · B♭m')
   // Разбор открывает обычный вид аккордов, уже на нужной ступени.
   await expect(page.locator('.selected-chord-summary__symbol')).toHaveText('B♭m')
   await expect(page.locator('.practice-tally dd').nth(1)).toHaveText('2')
@@ -121,9 +109,6 @@ test('тренировка работает и на басу: своя библ�
   await page.goto('/?practice=1&seed=101&instrument=bass-guitar')
   await page.getByRole('button', { name: 'Крутить барабан' }).click()
 
-  // Проскакиваем к шагу гаммы, подсказки не проверяем.
-  await page.getByRole('button', { name: 'Не помню — показать' }).click()
-  await page.getByRole('button', { name: 'Дальше' }).click()
   await page.getByRole('button', { name: 'Не помню — показать' }).click()
   await page.getByRole('button', { name: 'Дальше' }).click()
 

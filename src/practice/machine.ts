@@ -2,7 +2,7 @@ import { drawKey } from './keys'
 import { nextInt, nextRandom } from './rng'
 import type { PracticeAction, PracticeState, PracticeStepId, PracticeTally, StepOutcome } from './types'
 
-export const PRACTICE_STEPS: readonly PracticeStepId[] = ['signature', 'notes', 'scale', 'chord']
+export const PRACTICE_STEPS: readonly PracticeStepId[] = ['notes', 'scale', 'chord']
 
 /** Steps the player grades themselves — the app cannot hear the guitar. */
 export const SELF_CHECKED_STEPS: readonly PracticeStepId[] = ['scale']

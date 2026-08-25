@@ -56,9 +56,16 @@ export default function App() {
   const practiceSelection = practiceActive ? practice.state.selection : null
   const selection = practiceSelection ?? shareState.selection
   const practiceAwaitingKey = practiceActive && practiceSelection === null
-  const hintsHidden = practiceActive && practice.state.phase !== 'revealed'
   const practiceStep = practiceActive ? currentStep(practice.state) : null
   const practiceRevealed = practice.state.phase === 'revealed'
+  // The key signature and the interval formula hand the note step its answer,
+  // so they stay covered until it is graded — and come back for the rest of the
+  // round, where they are only context.
+  const notesStepIndex = practice.state.steps.indexOf('notes')
+  const notesAnswered =
+    practice.state.stepIndex > notesStepIndex ||
+    (practice.state.stepIndex === notesStepIndex && practiceRevealed)
+  const hintsHidden = practiceActive && !notesAnswered
   // The fingering library and the chord shapes live in the instrument module,
   // so those two steps hand the round's draw over and let it resolve them.
   const practiceDelegate: PracticeDelegate | undefined =
@@ -155,6 +162,7 @@ export default function App() {
               selection={selection}
               onSelect={(next) => setShareState((state) => ({ ...state, selection: next }))}
               locked={practiceActive}
+              hideSignature={hintsHidden}
               needleAngle={practiceActive ? practice.state.needleAngle : null}
               spinning={practice.state.phase === 'spinning'}
             />

@@ -1,6 +1,6 @@
 import type { KeySelection } from '../music/types'
 
-export type PracticeStepId = 'signature' | 'notes' | 'scale' | 'chord'
+export type PracticeStepId = 'notes' | 'scale' | 'chord'
 
 /** The four triad qualities diatonic harmony can produce. */
 export type TriadQuality = 'major' | 'minor' | 'diminished' | 'augmented'
@@ -13,13 +13,6 @@ export interface ChordAnswer {
 export type StepOutcome = 'correct' | 'wrong' | 'skipped'
 
 export type PracticePhase = 'idle' | 'spinning' | 'answering' | 'revealed'
-
-export type SignatureKind = 'sharp' | 'flat' | 'natural'
-
-export interface SignatureAnswer {
-  count: number
-  accidental: SignatureKind
-}
 
 export interface PracticeTally {
   correct: number

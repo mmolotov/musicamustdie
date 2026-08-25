@@ -1,18 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { chromaticNotes, DEGREE_LABELS, scaleDisplayName } from '../music/theory'
-import type {
-  BuiltScale,
-  ChordDefinition,
-  HarmonizedDegree,
-  KeySelection,
-  ScaleNote,
-} from '../music/types'
+import type { BuiltScale, ChordDefinition, HarmonizedDegree, ScaleNote } from '../music/types'
 import { currentStep, isSelfChecked } from '../practice/machine'
 import {
-  acceptedSignatures,
   checkChord,
   checkNoteSlots,
-  checkSignature,
   emptyNoteSlots,
   expectedPitchClasses,
   noteSlotsFilled,
@@ -22,17 +14,7 @@ import {
 import type { PracticeState, StepOutcome, TriadQuality } from '../practice/types'
 import { useT } from '../i18n'
 
-const SIGNATURE_COUNTS = [0, 1, 2, 3, 4, 5, 6, 7] as const
-
 const CHROMATIC_PITCH_CLASSES = Array.from({ length: 12 }, (_, pitchClass) => pitchClass)
-
-/** The signature answer while it is being assembled: both halves start unset. */
-interface DraftSignature {
-  count: number | null
-  accidental: 'sharp' | 'flat' | null
-}
-
-const EMPTY_SIGNATURE: DraftSignature = { count: null, accidental: null }
 
 function spellingsOf(pitchClass: number): { symbols: string; solfege: string; names: string[] } {
   const notes = chromaticNotes(pitchClass)
@@ -131,80 +113,6 @@ function NoteAnswerRow({ slots, notes }: { slots: NoteSlots; notes: ScaleNote[] 
   )
 }
 
-function SignatureQuestion({
-  draft,
-  onChange,
-}: {
-  draft: DraftSignature
-  onChange: (draft: DraftSignature) => void
-}) {
-  const tr = useT()
-  const noAccidentals = draft.count === 0
-  return (
-    <div className="signature-question">
-      <div>
-        <span className="control-label">{tr('practice.signature.count')}</span>
-        <div className="practice-chips" role="group" aria-label={tr('practice.signature.count')}>
-          {SIGNATURE_COUNTS.map((count) => (
-            <button
-              type="button"
-              key={count}
-              className={draft.count === count ? 'practice-chip is-active' : 'practice-chip'}
-              aria-pressed={draft.count === count}
-              onClick={() => onChange({ ...draft, count })}
-            >
-              {count}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <span className="control-label">{tr('practice.signature.kind')}</span>
-        {noAccidentals ? (
-          <p className="practice-note">{tr('practice.signature.noneHint')}</p>
-        ) : (
-          <div className="segmented segmented--small" role="group" aria-label={tr('practice.signature.kind')}>
-            <button
-              type="button"
-              className={draft.accidental === 'sharp' ? 'is-active' : ''}
-              aria-pressed={draft.accidental === 'sharp'}
-              onClick={() => onChange({ ...draft, accidental: 'sharp' })}
-            >
-              ♯ {tr('practice.signature.sharps')}
-            </button>
-            <button
-              type="button"
-              className={draft.accidental === 'flat' ? 'is-active' : ''}
-              aria-pressed={draft.accidental === 'flat'}
-              onClick={() => onChange({ ...draft, accidental: 'flat' })}
-            >
-              ♭ {tr('practice.signature.flats')}
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function SignatureAnswer({ selection }: { selection: KeySelection }) {
-  const tr = useT()
-  const [primary, ...alternatives] = acceptedSignatures(selection)
-  return (
-    <div className="signature-answer">
-      <span className="eyebrow">{tr('practice.correctAnswer')}</span>
-      <strong>{primary?.label}</strong>
-      {alternatives.length > 0 && (
-        <p className="practice-note">
-          {tr('practice.alsoAccepted', {
-            answer: alternatives.map((signature) => signature.label).join(', '),
-          })}
-        </p>
-      )}
-    </div>
-  )
-}
-
 function ChordQuestion({
   root,
   quality,
@@ -246,7 +154,7 @@ function ChordQuestion({
 function ChordAnswer({ chord }: { chord: ChordDefinition }) {
   const tr = useT()
   return (
-    <div className="signature-answer">
+    <div className="practice-answer">
       <span className="eyebrow">{tr('practice.correctAnswer')}</span>
       <strong>{chord.roman} · {chord.symbol}</strong>
       <p className="practice-note">
@@ -301,7 +209,6 @@ export function PracticePanel({
   children,
 }: PracticePanelProps) {
   const tr = useT()
-  const [signature, setSignature] = useState<DraftSignature>(EMPTY_SIGNATURE)
   const [slots, setSlots] = useState<NoteSlots>(emptyNoteSlots)
   const [chordRoot, setChordRoot] = useState<number | null>(null)
   const [chordQuality, setChordQuality] = useState<TriadQuality | null>(null)
@@ -313,7 +220,6 @@ export function PracticePanel({
   const isLastStep = state.stepIndex === state.steps.length - 1
 
   const resetInputs = () => {
-    setSignature(EMPTY_SIGNATURE)
     setSlots(emptyNoteSlots())
     setChordRoot(null)
     setChordQuality(null)
@@ -350,24 +256,10 @@ export function PracticePanel({
   }
 
   const canSubmit =
-    step === 'signature'
-      ? signature.count !== null && (signature.count === 0 || signature.accidental !== null)
-      : step === 'chord'
-        ? chordRoot !== null && chordQuality !== null
-        : noteSlotsFilled(slots)
+    step === 'chord' ? chordRoot !== null && chordQuality !== null : noteSlotsFilled(slots)
 
   const submit = () => {
     if (!selection || !step) return
-    if (step === 'signature') {
-      const isCorrect =
-        signature.count !== null &&
-        checkSignature(selection, {
-          count: signature.count,
-          accidental: signature.count === 0 ? 'natural' : signature.accidental ?? 'sharp',
-        })
-      onAnswer(isCorrect ? 'correct' : 'wrong')
-      return
-    }
     if (step === 'chord') {
       const isCorrect =
         chord !== undefined &&
@@ -436,9 +328,6 @@ export function PracticePanel({
 
           {state.phase === 'answering' ? (
             <>
-              {step === 'signature' && (
-                <SignatureQuestion draft={signature} onChange={setSignature} />
-              )}
               {step === 'notes' && (
                 <div className="notes-question">
                   <NoteSlotRow slots={slots} onClear={clearSlot} />
@@ -501,7 +390,6 @@ export function PracticePanel({
                   {tr(`practice.verdict.${state.outcome}`)}
                 </p>
               )}
-              {step === 'signature' && <SignatureAnswer selection={selection} />}
               {/* A correct answer needs no correction table: the regular
                   "seven degrees" strip renders right below with the same notes. */}
               {step === 'notes' && state.outcome !== 'correct' && (

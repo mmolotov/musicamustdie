@@ -22,6 +22,8 @@ interface CircleOfFifthsProps {
   spinning?: boolean
   /** Practice mode draws the key — clicking a wedge must not change it. */
   locked?: boolean
+  /** The signature is an answer while the note step is open. */
+  hideSignature?: boolean
 }
 
 const COLORS = [
@@ -86,6 +88,7 @@ export function CircleOfFifths({
   needleAngle = null,
   spinning = false,
   locked = false,
+  hideSignature = false,
 }: CircleOfFifthsProps) {
   const tr = useT()
   const selectedMajorPitch =
@@ -225,7 +228,7 @@ export function CircleOfFifths({
           {selection.mode === 'major' ? tr('circle.major') : tr('circle.minor')}
         </text>
         <text x="300" y="356" textAnchor="middle" className="circle-center__signature">
-          {signature.label}
+          {hideSignature ? tr('practice.hidden') : signature.label}
         </text>
         {needleAngle !== null && (
           <g

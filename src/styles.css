@@ -3163,13 +3163,6 @@ footer {
   letter-spacing: -0.03em;
 }
 
-.signature-question {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 26px;
-  margin-bottom: 24px;
-}
-
 .practice-chips {
   display: flex;
   flex-wrap: wrap;
@@ -3315,7 +3308,7 @@ footer {
   color: var(--yellow);
 }
 
-.signature-answer {
+.practice-answer {
   margin-bottom: 22px;
   padding: 18px 22px;
   border: 1px solid var(--line);
@@ -3323,7 +3316,7 @@ footer {
   background: var(--paper-strong);
 }
 
-.signature-answer strong {
+.practice-answer strong {
   font-size: 25px;
   font-weight: 900;
 }
