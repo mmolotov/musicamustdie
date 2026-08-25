@@ -402,3 +402,40 @@ export function formatPitchClass(pitchClass: number, preference: AccidentalPrefe
   const flatNames = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B']
   return (preference === 'sharp' ? sharpNames : flatNames)[mod(pitchClass)] ?? 'C'
 }
+
+const CHROMATIC_SPELLINGS: Record<number, TonicSpec[]> = {
+  0: [{ letter: 'C', accidental: 0 }],
+  1: [{ letter: 'C', accidental: 1 }, { letter: 'D', accidental: -1 }],
+  2: [{ letter: 'D', accidental: 0 }],
+  3: [{ letter: 'D', accidental: 1 }, { letter: 'E', accidental: -1 }],
+  4: [{ letter: 'E', accidental: 0 }],
+  5: [{ letter: 'F', accidental: 0 }],
+  6: [{ letter: 'F', accidental: 1 }, { letter: 'G', accidental: -1 }],
+  7: [{ letter: 'G', accidental: 0 }],
+  8: [{ letter: 'G', accidental: 1 }, { letter: 'A', accidental: -1 }],
+  9: [{ letter: 'A', accidental: 0 }],
+  10: [{ letter: 'A', accidental: 1 }, { letter: 'B', accidental: -1 }],
+  11: [{ letter: 'B', accidental: 0 }],
+}
+
+/**
+ * Both common spellings of a pitch class — one for the natural notes, two for
+ * the black keys. The practice keyboard shows them side by side on purpose:
+ * labelling those chips with the drilled key's own preference would hand out
+ * the sharp/flat half of the answer for free.
+ */
+export function chromaticNotes(pitchClass: number): SpelledNote[] {
+  const specs = CHROMATIC_SPELLINGS[mod(pitchClass)] ?? []
+  return specs.map((spec) => toSpelledNote(spec, mod(pitchClass)))
+}
+
+/**
+ * Like `keyDisplayName`, but names the scale rather than just the mode —
+ * "E♭ · Ми♭ гармонический минор" instead of "E♭ · Ми♭ минор". Practice tasks
+ * need the minor variant spelled out: it decides the answer.
+ */
+export function scaleDisplayName(scale: BuiltScale): string {
+  const { tonic, label } = scale
+  if (getLang() === 'en') return `${tonic.symbol} ${label}`
+  return `${tonic.symbol} · ${tonic.solfege} ${label}`
+}

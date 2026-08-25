@@ -14,6 +14,14 @@ import { useT } from '../i18n'
 interface CircleOfFifthsProps {
   selection: KeySelection
   onSelect: (selection: KeySelection) => void
+  /**
+   * Absolute rotation of the practice needle, in degrees. It only ever grows,
+   * so the CSS transition keeps turning the same way. `null` hides the needle.
+   */
+  needleAngle?: number | null
+  spinning?: boolean
+  /** Practice mode draws the key — clicking a wedge must not change it. */
+  locked?: boolean
 }
 
 const COLORS = [
@@ -72,7 +80,13 @@ function minorSectorLabel(majorPitch: number): string {
   return `${circleTonicLabel(minorPitch, 'minor', defaultSpellingForMajorPitch(majorPitch))}m`
 }
 
-export function CircleOfFifths({ selection, onSelect }: CircleOfFifthsProps) {
+export function CircleOfFifths({
+  selection,
+  onSelect,
+  needleAngle = null,
+  spinning = false,
+  locked = false,
+}: CircleOfFifthsProps) {
   const tr = useT()
   const selectedMajorPitch =
     selection.mode === 'major' ? selection.tonic : getRelativeMajorPitch(selection.tonic)
@@ -107,7 +121,7 @@ export function CircleOfFifths({ selection, onSelect }: CircleOfFifthsProps) {
   }
 
   return (
-    <div className="circle-shell">
+    <div className={locked ? 'circle-shell is-locked' : 'circle-shell'}>
       <div className="circle-direction circle-direction--left">
         <span aria-hidden="true">←</span> {tr('circle.left')}
       </div>
@@ -141,12 +155,12 @@ export function CircleOfFifths({ selection, onSelect }: CircleOfFifthsProps) {
           return (
             <g key={majorPitch} className={sectorSelected ? 'circle-sector is-family-selected' : 'circle-sector'}>
               <g
-                role="button"
-                tabIndex={0}
+                role={locked ? undefined : 'button'}
+                tabIndex={locked ? undefined : 0}
                 aria-label={tr('circle.majorAria', { note: majorSectorLabel(majorPitch) })}
-                aria-pressed={outerSelected}
-                onClick={() => selectSector(majorPitch, 'major')}
-                onKeyDown={(event) => handleKeyDown(event, index, 'major')}
+                aria-pressed={locked ? undefined : outerSelected}
+                onClick={locked ? undefined : () => selectSector(majorPitch, 'major')}
+                onKeyDown={locked ? undefined : (event) => handleKeyDown(event, index, 'major')}
                 className={outerSelected ? 'circle-hit is-selected' : 'circle-hit'}
               >
                 <path
@@ -174,12 +188,12 @@ export function CircleOfFifths({ selection, onSelect }: CircleOfFifthsProps) {
                 </text>
               </g>
               <g
-                role="button"
-                tabIndex={0}
+                role={locked ? undefined : 'button'}
+                tabIndex={locked ? undefined : 0}
                 aria-label={tr('circle.minorAria', { note: minorSectorLabel(majorPitch) })}
-                aria-pressed={innerSelected}
-                onClick={() => selectSector(majorPitch, 'minor')}
-                onKeyDown={(event) => handleKeyDown(event, index, 'minor')}
+                aria-pressed={locked ? undefined : innerSelected}
+                onClick={locked ? undefined : () => selectSector(majorPitch, 'minor')}
+                onKeyDown={locked ? undefined : (event) => handleKeyDown(event, index, 'minor')}
                 className={innerSelected ? 'circle-hit is-selected' : 'circle-hit'}
               >
                 <path
@@ -213,8 +227,17 @@ export function CircleOfFifths({ selection, onSelect }: CircleOfFifthsProps) {
         <text x="300" y="356" textAnchor="middle" className="circle-center__signature">
           {signature.label}
         </text>
+        {needleAngle !== null && (
+          <g
+            className={spinning ? 'circle-needle is-spinning' : 'circle-needle'}
+            style={{ transform: `rotate(${needleAngle}deg)` }}
+            aria-hidden="true"
+          >
+            <path d="M 300 48 L 313 8 L 287 8 Z" />
+          </g>
+        )}
       </svg>
-      <p className="circle-help">{tr('circle.help')}</p>
+      <p className="circle-help">{locked ? tr('circle.lockedHelp') : tr('circle.help')}</p>
     </div>
   )
 }
