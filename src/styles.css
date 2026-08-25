@@ -3424,3 +3424,79 @@ footer {
     padding: 7px 9px;
   }
 }
+
+/* Practice: the assigned fingering and the chord question. */
+.practice-assignment {
+  margin-bottom: 24px;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper-strong);
+}
+
+.practice-assignment__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.practice-assignment h4 {
+  margin: 0 0 4px;
+  font-size: 21px;
+}
+
+.practice-assignment__head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.practice-assignment__controls {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.practice-assignment .fretboard-scroll,
+.practice-assignment .tab-card {
+  margin-top: 20px;
+}
+
+.chord-question {
+  margin-bottom: 24px;
+}
+
+.chord-question .control-label {
+  margin-top: 18px;
+}
+
+.chord-question .control-label:first-child {
+  margin-top: 0;
+}
+
+.chromatic-key.is-selected {
+  border-color: var(--sage);
+  color: #090b0d;
+  background: var(--sage);
+}
+
+.chromatic-key.is-selected span {
+  color: rgba(9, 11, 13, 0.68);
+}
+
+@media (max-width: 760px) {
+  .practice-assignment {
+    padding: 18px 15px;
+  }
+
+  .practice-assignment__controls {
+    width: 100%;
+  }
+
+  .practice-assignment__controls .audio-button {
+    flex: 1;
+  }
+}

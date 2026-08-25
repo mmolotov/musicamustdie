@@ -10,6 +10,8 @@ export interface PracticeControls {
   spin: () => void
   /** Stops the needle early — the wheel is fun exactly twice. */
   landNeedle: () => void
+  /** Shows the answer without grading it, for the self-checked steps. */
+  reveal: () => void
   answer: (outcome: StepOutcome) => void
   next: () => void
 }
@@ -60,11 +62,12 @@ export function usePractice(): PracticeControls {
 
   useEffect(() => clearSpinTimer, [clearSpinTimer])
 
+  const reveal = useCallback(() => dispatch({ type: 'reveal' }), [dispatch])
   const answer = useCallback(
     (outcome: StepOutcome) => dispatch({ type: 'answer', outcome }),
     [dispatch],
   )
   const next = useCallback(() => dispatch({ type: 'next' }), [dispatch])
 
-  return { state, spin, landNeedle, answer, next }
+  return { state, spin, landNeedle, reveal, answer, next }
 }

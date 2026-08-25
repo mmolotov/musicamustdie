@@ -29,6 +29,7 @@ export {
   scalePatternConstructionKey,
   standardSixStringOffset,
 } from './guitarScalePatterns'
+export type { ScalePatternDisplayGroup } from './guitarScalePatterns'
 
 export type Handedness = 'right' | 'left'
 

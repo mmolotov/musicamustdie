@@ -1,6 +1,6 @@
 import { getKeySignature } from '../music/theory'
-import type { KeySelection, KeySignature, ScaleNote } from '../music/types'
-import type { SignatureAnswer } from './types'
+import type { ChordDefinition, KeySelection, KeySignature, ScaleNote } from '../music/types'
+import type { ChordAnswer, SignatureAnswer, TriadQuality } from './types'
 
 export const NOTE_SLOT_COUNT = 7
 
@@ -45,4 +45,20 @@ export function checkNoteSlots(entered: NoteSlots, expected: number[]): boolean[
 
 export function noteSlotsFilled(entered: NoteSlots): boolean {
   return entered.every((slot) => slot !== null)
+}
+
+export const TRIAD_QUALITIES: readonly TriadQuality[] = [
+  'major',
+  'minor',
+  'diminished',
+  'augmented',
+]
+
+/**
+ * The chord step asks for a root and a quality, so that is all it grades —
+ * the spelling of the root (D♯ or E♭) is taught by the revealed answer, the
+ * same way the note step handles it.
+ */
+export function checkChord(chord: ChordDefinition, answer: ChordAnswer): boolean {
+  return chord.root.pitchClass === answer.root && chord.quality === answer.quality
 }

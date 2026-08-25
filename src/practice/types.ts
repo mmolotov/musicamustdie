@@ -1,10 +1,14 @@
 import type { KeySelection } from '../music/types'
 
-/**
- * Steps of a practice round. The fretboard ("play the scale") and chord steps
- * join this union together with their question UI.
- */
-export type PracticeStepId = 'signature' | 'notes'
+export type PracticeStepId = 'signature' | 'notes' | 'scale' | 'chord'
+
+/** The four triad qualities diatonic harmony can produce. */
+export type TriadQuality = 'major' | 'minor' | 'diminished' | 'augmented'
+
+export interface ChordAnswer {
+  root: number
+  quality: TriadQuality
+}
 
 export type StepOutcome = 'correct' | 'wrong' | 'skipped'
 
@@ -35,6 +39,10 @@ export interface PracticeState {
   pending: KeySelection | null
   /** Grows without bound so the CSS transition always turns forwards. */
   needleAngle: number
+  /** Scale degree the chord step asks about (1-based), drawn with the key. */
+  chordDegree: number
+  /** Picks the fingering the scale step assigns; the instrument resolves it. */
+  patternPick: number
   steps: readonly PracticeStepId[]
   stepIndex: number
   /** The outcome of the step being reviewed; null while answering. */
@@ -45,5 +53,7 @@ export interface PracticeState {
 export type PracticeAction =
   | { type: 'spin' }
   | { type: 'spinEnded' }
+  /** Shows the answer without grading it — the self-checked fretboard step. */
+  | { type: 'reveal' }
   | { type: 'answer'; outcome: StepOutcome }
   | { type: 'next' }

@@ -1,17 +1,25 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { chromaticNotes, DEGREE_LABELS, scaleDisplayName } from '../music/theory'
-import type { BuiltScale, KeySelection, ScaleNote } from '../music/types'
-import { currentStep } from '../practice/machine'
+import type {
+  BuiltScale,
+  ChordDefinition,
+  HarmonizedDegree,
+  KeySelection,
+  ScaleNote,
+} from '../music/types'
+import { currentStep, isSelfChecked } from '../practice/machine'
 import {
   acceptedSignatures,
+  checkChord,
   checkNoteSlots,
   checkSignature,
   emptyNoteSlots,
   expectedPitchClasses,
   noteSlotsFilled,
+  TRIAD_QUALITIES,
   type NoteSlots,
 } from '../practice/questions'
-import type { PracticeState, StepOutcome } from '../practice/types'
+import type { PracticeState, StepOutcome, TriadQuality } from '../practice/types'
 import { useT } from '../i18n'
 
 const SIGNATURE_COUNTS = [0, 1, 2, 3, 4, 5, 6, 7] as const
@@ -36,12 +44,12 @@ function spellingsOf(pitchClass: number): { symbols: string; solfege: string; na
 }
 
 function ChromaticKeyboard({
-  used,
-  full,
+  isDisabled,
+  isSelected,
   onPick,
 }: {
-  used: NoteSlots
-  full: boolean
+  isDisabled: (pitchClass: number) => boolean
+  isSelected: (pitchClass: number) => boolean
   onPick: (pitchClass: number) => void
 }) {
   const tr = useT()
@@ -49,13 +57,16 @@ function ChromaticKeyboard({
     <div className="chromatic-keyboard" role="group" aria-label={tr('practice.keyboardAria')}>
       {CHROMATIC_PITCH_CLASSES.map((pitchClass) => {
         const { symbols, solfege, names } = spellingsOf(pitchClass)
-        const taken = used.includes(pitchClass)
+        const classes = ['chromatic-key']
+        if (names.length > 1) classes.push('chromatic-key--altered')
+        if (isSelected(pitchClass)) classes.push('is-selected')
         return (
           <button
             type="button"
             key={pitchClass}
-            className={names.length > 1 ? 'chromatic-key chromatic-key--altered' : 'chromatic-key'}
-            disabled={taken || full}
+            className={classes.join(' ')}
+            disabled={isDisabled(pitchClass)}
+            aria-pressed={isSelected(pitchClass)}
             aria-label={names.join(` ${tr('practice.spellingOr')} `)}
             onClick={() => onPick(pitchClass)}
           >
@@ -194,6 +205,60 @@ function SignatureAnswer({ selection }: { selection: KeySelection }) {
   )
 }
 
+function ChordQuestion({
+  root,
+  quality,
+  onRootChange,
+  onQualityChange,
+}: {
+  root: number | null
+  quality: TriadQuality | null
+  onRootChange: (pitchClass: number) => void
+  onQualityChange: (quality: TriadQuality) => void
+}) {
+  const tr = useT()
+  return (
+    <div className="chord-question">
+      <span className="control-label">{tr('practice.chord.root')}</span>
+      <ChromaticKeyboard
+        isDisabled={() => false}
+        isSelected={(pitchClass) => pitchClass === root}
+        onPick={onRootChange}
+      />
+      <span className="control-label">{tr('practice.chord.quality')}</span>
+      <div className="practice-chips" role="group" aria-label={tr('practice.chord.quality')}>
+        {TRIAD_QUALITIES.map((candidate) => (
+          <button
+            type="button"
+            key={candidate}
+            className={quality === candidate ? 'practice-chip is-active' : 'practice-chip'}
+            aria-pressed={quality === candidate}
+            onClick={() => onQualityChange(candidate)}
+          >
+            {tr(`practice.quality.${candidate}`)}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ChordAnswer({ chord }: { chord: ChordDefinition }) {
+  const tr = useT()
+  return (
+    <div className="signature-answer">
+      <span className="eyebrow">{tr('practice.correctAnswer')}</span>
+      <strong>{chord.roman} · {chord.symbol}</strong>
+      <p className="practice-note">
+        {chord.qualityLabel} ·{' '}
+        {chord.notes
+          .map((note) => (note.solfege === note.symbol ? note.symbol : `${note.symbol} (${note.solfege})`))
+          .join(' · ')}
+      </p>
+    </div>
+  )
+}
+
 function PracticeSteps({ state }: { state: PracticeState }) {
   const tr = useT()
   return (
@@ -214,32 +279,44 @@ function PracticeSteps({ state }: { state: PracticeState }) {
 export interface PracticePanelProps {
   state: PracticeState
   scale: BuiltScale
+  harmony: HarmonizedDegree[]
   onSpin: () => void
   onLandNeedle: () => void
+  onReveal: () => void
   onAnswer: (outcome: StepOutcome) => void
   onNext: () => void
+  /** The instrument's own step body — the assigned fingering, the shapes. */
+  children?: ReactNode
 }
 
 export function PracticePanel({
   state,
   scale,
+  harmony,
   onSpin,
   onLandNeedle,
+  onReveal,
   onAnswer,
   onNext,
+  children,
 }: PracticePanelProps) {
   const tr = useT()
   const [signature, setSignature] = useState<DraftSignature>(EMPTY_SIGNATURE)
   const [slots, setSlots] = useState<NoteSlots>(emptyNoteSlots)
+  const [chordRoot, setChordRoot] = useState<number | null>(null)
+  const [chordQuality, setChordQuality] = useState<TriadQuality | null>(null)
 
   const step = currentStep(state)
   const { selection } = state
   const notes = scale.ascending
+  const chord = harmony[state.chordDegree - 1]?.triad
   const isLastStep = state.stepIndex === state.steps.length - 1
 
   const resetInputs = () => {
     setSignature(EMPTY_SIGNATURE)
     setSlots(emptyNoteSlots())
+    setChordRoot(null)
+    setChordQuality(null)
   }
 
   const startRound = () => {
@@ -253,6 +330,11 @@ export function PracticePanel({
     // The last step rolls straight into the next key: an extra "spin again"
     // screen between every round is pure friction.
     if (isLastStep) onSpin()
+  }
+
+  const gradeAndAdvance = (outcome: StepOutcome) => {
+    onAnswer(outcome)
+    advance()
   }
 
   const fillSlot = (pitchClass: number) => {
@@ -270,7 +352,9 @@ export function PracticePanel({
   const canSubmit =
     step === 'signature'
       ? signature.count !== null && (signature.count === 0 || signature.accidental !== null)
-      : noteSlotsFilled(slots)
+      : step === 'chord'
+        ? chordRoot !== null && chordQuality !== null
+        : noteSlotsFilled(slots)
 
   const submit = () => {
     if (!selection || !step) return
@@ -281,6 +365,15 @@ export function PracticePanel({
           count: signature.count,
           accidental: signature.count === 0 ? 'natural' : signature.accidental ?? 'sharp',
         })
+      onAnswer(isCorrect ? 'correct' : 'wrong')
+      return
+    }
+    if (step === 'chord') {
+      const isCorrect =
+        chord !== undefined &&
+        chordRoot !== null &&
+        chordQuality !== null &&
+        checkChord(chord, { root: chordRoot, quality: chordQuality })
       onAnswer(isCorrect ? 'correct' : 'wrong')
       return
     }
@@ -335,14 +428,18 @@ export function PracticePanel({
         <>
           <PracticeSteps state={state} />
           <p className="practice-task">
-            {tr(`practice.task.${step}`, { key: scaleDisplayName(scale) })}
+            {tr(`practice.task.${step}`, {
+              key: scaleDisplayName(scale),
+              degree: DEGREE_LABELS[state.chordDegree - 1] ?? state.chordDegree,
+            })}
           </p>
 
           {state.phase === 'answering' ? (
             <>
-              {step === 'signature' ? (
+              {step === 'signature' && (
                 <SignatureQuestion draft={signature} onChange={setSignature} />
-              ) : (
+              )}
+              {step === 'notes' && (
                 <div className="notes-question">
                   <NoteSlotRow slots={slots} onClear={clearSlot} />
                   <p className="practice-note">
@@ -352,46 +449,93 @@ export function PracticePanel({
                     })}
                   </p>
                   <ChromaticKeyboard
-                    used={slots}
-                    full={noteSlotsFilled(slots)}
+                    isDisabled={(pitchClass) =>
+                      slots.includes(pitchClass) || noteSlotsFilled(slots)
+                    }
+                    isSelected={() => false}
                     onPick={fillSlot}
                   />
                 </div>
               )}
+              {step === 'chord' && (
+                <ChordQuestion
+                  root={chordRoot}
+                  quality={chordQuality}
+                  onRootChange={setChordRoot}
+                  onQualityChange={setChordQuality}
+                />
+              )}
+              {/* The fretboard step is played, not answered: the instrument
+                  shows the assignment and the player reports back. */}
+              {step === 'scale' && children}
               <div className="practice-actions">
-                <button
-                  type="button"
-                  className="primary-button"
-                  disabled={!canSubmit}
-                  onClick={submit}
-                >
-                  {tr('practice.check')}
-                </button>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => onAnswer('skipped')}
-                >
-                  {tr('practice.reveal')}
-                </button>
+                {step === 'scale' ? (
+                  <button type="button" className="primary-button" onClick={onReveal}>
+                    {tr('practice.played')}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="primary-button"
+                      disabled={!canSubmit}
+                      onClick={submit}
+                    >
+                      {tr('practice.check')}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => onAnswer('skipped')}
+                    >
+                      {tr('practice.reveal')}
+                    </button>
+                  </>
+                )}
               </div>
             </>
           ) : (
             <>
-              <p className={`practice-verdict practice-verdict--${state.outcome ?? 'skipped'}`}>
-                {tr(`practice.verdict.${state.outcome ?? 'skipped'}`)}
-              </p>
-              {step === 'signature' ? (
-                <SignatureAnswer selection={selection} />
-              ) : (
-                // A correct answer needs no correction table: the regular
-                // "seven degrees" strip renders right below with the same notes.
-                state.outcome !== 'correct' && <NoteAnswerRow slots={slots} notes={notes} />
+              {state.outcome !== null && (
+                <p className={`practice-verdict practice-verdict--${state.outcome}`}>
+                  {tr(`practice.verdict.${state.outcome}`)}
+                </p>
               )}
+              {step === 'signature' && <SignatureAnswer selection={selection} />}
+              {/* A correct answer needs no correction table: the regular
+                  "seven degrees" strip renders right below with the same notes. */}
+              {step === 'notes' && state.outcome !== 'correct' && (
+                <NoteAnswerRow slots={slots} notes={notes} />
+              )}
+              {/* Same rule as the notes step: a correct answer is already
+                  spelled out by the chord view that follows. */}
+              {step === 'chord' && chord && state.outcome !== 'correct' && (
+                <ChordAnswer chord={chord} />
+              )}
+              {children}
               <div className="practice-actions">
-                <button type="button" className="primary-button" onClick={advance}>
-                  {isLastStep ? tr('practice.nextRound') : tr('practice.next')}
-                </button>
+                {isSelfChecked(step) && state.outcome === null ? (
+                  <>
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={() => gradeAndAdvance('correct')}
+                    >
+                      {tr('practice.selfCheck.ok')}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => gradeAndAdvance('wrong')}
+                    >
+                      {tr('practice.selfCheck.fail')}
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="primary-button" onClick={advance}>
+                    {isLastStep ? tr('practice.nextRound') : tr('practice.next')}
+                  </button>
+                )}
               </div>
             </>
           )}

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { CircleOfFifths } from './components/CircleOfFifths'
 import { getInstrument, listInstruments } from './instruments/registry'
-import { getInstrumentUi } from './instruments/uiRegistry'
+import { getInstrumentUi, type PracticeDelegate } from './instruments/uiRegistry'
 import type { DetailSection } from './hooks/useUrlState'
 import type { MinorVariant } from './music/types'
 import {
@@ -57,10 +57,25 @@ export default function App() {
   const selection = practiceSelection ?? shareState.selection
   const practiceAwaitingKey = practiceActive && practiceSelection === null
   const hintsHidden = practiceActive && practice.state.phase !== 'revealed'
-  // The fretboard is part of the answer, so it only appears once the note
-  // step has been graded.
-  const revealsFretboard =
-    practiceActive && practice.state.phase === 'revealed' && currentStep(practice.state) === 'notes'
+  const practiceStep = practiceActive ? currentStep(practice.state) : null
+  const practiceRevealed = practice.state.phase === 'revealed'
+  // The fingering library and the chord shapes live in the instrument module,
+  // so those two steps hand the round's draw over and let it resolve them.
+  const practiceDelegate: PracticeDelegate | undefined =
+    practiceStep === 'scale' || (practiceStep === 'chord' && practiceRevealed)
+      ? {
+          step: practiceStep,
+          pick: practice.state.patternPick,
+          chordDegree: practice.state.chordDegree,
+          revealed: practiceRevealed,
+        }
+      : undefined
+  // Everything the workspace draws is part of some answer, so it only appears
+  // on the steps that have been revealed.
+  const practiceShowsWorkspace =
+    practiceDelegate !== undefined || (practiceStep === 'notes' && practiceRevealed)
+  const practiceSection: DetailSection =
+    practiceStep === 'scale' ? 'scales' : practiceStep === 'chord' ? 'chords' : 'notes'
   // Practice always drills the ascending form; the descending melodic minor is
   // a question for the fretboard step.
   const direction = practiceActive ? 'ascending' : shareState.direction
@@ -297,28 +312,32 @@ export default function App() {
             </div>
 
             {practiceActive ? (
-              <>
-                <PracticePanel
-                  state={practice.state}
-                  scale={scale}
-                  onSpin={practice.spin}
-                  onLandNeedle={practice.landNeedle}
-                  onAnswer={practice.answer}
-                  onNext={practice.next}
-                />
-                {revealsFretboard && Workspace && (
+              <PracticePanel
+                state={practice.state}
+                scale={scale}
+                harmony={harmony}
+                onSpin={practice.spin}
+                onLandNeedle={practice.landNeedle}
+                onReveal={practice.reveal}
+                onAnswer={practice.answer}
+                onNext={practice.next}
+              >
+                {practiceShowsWorkspace && Workspace && (
                   <Workspace
-                    key={activeInstrument?.id}
+                    // A fresh mount per step: the assignment and the chord
+                    // shapes are picked when the view first renders.
+                    key={`${activeInstrument?.id}-${practice.state.round}-${practiceStep}`}
                     scale={scale}
                     activeNotes={activeNotes}
                     harmony={harmony}
                     shareState={workspaceShareState}
-                    section="notes"
+                    section={practiceSection}
                     settingsOpen={settingsOpen}
                     onCloseSettings={() => setSettingsOpen(false)}
+                    practice={practiceDelegate}
                   />
                 )}
-              </>
+              </PracticePanel>
             ) : (
               <>
                 <nav className="detail-tabs" aria-label={tr('tabs.aria')}>
