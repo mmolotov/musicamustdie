@@ -18,6 +18,7 @@ import {
   type BassFilter,
   type GuitarPreferences,
   type GuitarVoicing,
+  type ScalePatternDisplayGroup,
   type VoicingConstraints,
 } from '../instruments/guitar'
 import { getFrettedSpec } from '../instruments/fretted'
@@ -25,6 +26,7 @@ import type { InstrumentWorkspaceProps } from '../instruments/uiRegistry'
 import type { ChordDefinition, ScaleDirection, ScaleNote } from '../music/types'
 import { ascendingScaleMidis, midiNearMiddleC } from '../music/playback'
 import { usePersistentState } from '../hooks/usePersistentState'
+import { useMetronome } from '../hooks/useMetronome'
 import { useSynth } from '../hooks/useSynth'
 import { useVoicings } from '../hooks/useVoicings'
 import { Fretboard } from './Fretboard'
@@ -56,6 +58,92 @@ function scalePlaybackEvents(notes: ScaleNote[], direction: ScaleDirection): Pla
     startBeat: index * 0.55,
     durationBeats: 0.48,
   }))
+}
+
+interface RankedScaleGroups {
+  options: ReturnType<typeof scaleGenerationOptions>
+  ranked: PerformancePattern<FretLocation>[]
+  /** The "best" list: recommended shapes first, padded to a usable length. */
+  recommended: ScalePatternDisplayGroup[]
+}
+
+function rankedScaleGroups(
+  patterns: PerformancePattern<FretLocation>[],
+  preferences: GuitarPreferences,
+): RankedScaleGroups {
+  const options = scaleGenerationOptions(preferences)
+  const ranked = rankScalePatterns(patterns, options)
+  const groups = groupScalePatternsForDisplay(ranked)
+  const target = Math.max(6, ranked.filter((pattern) => pattern.recommended).length)
+  const recommended = [
+    ...groups.filter((group) => group.pattern.recommended),
+    ...groups.filter((group) => !group.pattern.recommended),
+  ].slice(0, target)
+  return { options, ranked, recommended }
+}
+
+function routesOf(pattern: PerformancePattern<FretLocation>, fallbackName: string): PatternRoute[] {
+  if (pattern.routes && pattern.routes.length > 0) return pattern.routes
+  return [{
+    id: 'legacy',
+    name: fallbackName,
+    kind: 'modal',
+    ascending: pattern.ascending,
+    descending: pattern.descending,
+  }]
+}
+
+interface PatternPlayback {
+  activeLocationId: string | null
+  activeStepIndex: number | null
+  play: (events: PlayableEvent[]) => void
+  clear: () => void
+}
+
+/** Walks the highlight along the fretboard and the tab while a route plays. */
+function usePatternPlayback(
+  tempo: number,
+  playEvents: (events: PlayableEvent[]) => void,
+): PatternPlayback {
+  const [activeLocationId, setActiveLocationId] = useState<string | null>(null)
+  const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null)
+  const timers = useRef<number[]>([])
+
+  const clear = useCallback(() => {
+    timers.current.forEach((timer) => window.clearTimeout(timer))
+    timers.current = []
+    setActiveLocationId(null)
+    setActiveStepIndex(null)
+  }, [])
+
+  const play = useCallback(
+    (events: PlayableEvent[]) => {
+      clear()
+      playEvents(events)
+      const beatDurationMs = 60_000 / tempo
+      events.forEach((event, index) => {
+        timers.current.push(
+          window.setTimeout(() => {
+            setActiveLocationId(event.locationId ?? null)
+            setActiveStepIndex(index)
+          }, event.startBeat * beatDurationMs),
+        )
+      })
+      const finalBeat = events.reduce(
+        (latest, event) => Math.max(latest, event.startBeat + event.durationBeats),
+        0,
+      )
+      timers.current.push(
+        window.setTimeout(() => {
+          setActiveLocationId(null)
+          setActiveStepIndex(null)
+        }, finalBeat * beatDurationMs + 80),
+      )
+    },
+    [clear, playEvents, tempo],
+  )
+
+  return { activeLocationId, activeStepIndex, play, clear }
 }
 
 function AudioButton({ label, onClick, disabled = false }: { label: string; onClick: () => void; disabled?: boolean }) {
@@ -95,6 +183,55 @@ function LabelModeToggle({
   )
 }
 
+interface FullNeckProps {
+  locations: FretLocation[]
+  preferences: GuitarPreferences
+  onPreferencesChange: (preferences: GuitarPreferences) => void
+  playMidi: (midi: number) => void
+  /** Practice puts its own caption on the disclosure that wraps this. */
+  withHeading?: boolean
+}
+
+/** Every scale note across the whole neck. */
+function FullNeck({
+  locations,
+  preferences,
+  onPreferencesChange,
+  playMidi,
+  withHeading = true,
+}: FullNeckProps) {
+  const tr = useT()
+  return (
+    <>
+      {withHeading ? (
+        <div className="subsection-heading">
+          <div>
+            <h4>{tr('ws.allNotes')}</h4>
+            <p>{tr('ws.allNotesHint')}</p>
+          </div>
+          <LabelModeToggle preferences={preferences} onChange={onPreferencesChange} />
+        </div>
+      ) : (
+        <div className="full-neck-toolbar">
+          <p>{tr('ws.allNotesHint')}</p>
+          <LabelModeToggle preferences={preferences} onChange={onPreferencesChange} />
+        </div>
+      )}
+      <Fretboard
+        config={preferences.config}
+        locations={locations}
+        labelMode={preferences.fretboardLabels}
+        onPlayNote={playMidi}
+      />
+      <div className="fretboard-legend" aria-label={tr('ws.fretboardLegendAria')}>
+        <span><i className="legend-dot legend-dot--root" /> {tr('ws.tonic')}</span>
+        <span><i className="legend-dot" /> {tr('ws.scaleNotes')}</span>
+        <span>{tr('ws.fullRange', { frets: preferences.config.frets })}</span>
+      </div>
+    </>
+  )
+}
+
 interface NotesViewProps {
   activeNotes: ScaleNote[]
   locations: FretLocation[]
@@ -103,6 +240,8 @@ interface NotesViewProps {
   direction: ScaleDirection
   playMidi: (midi: number) => void
   playScale: () => void
+  /** Practice moves the whole neck onto the fretboard step, behind a click. */
+  showFullNeck?: boolean
 }
 
 function NotesView({
@@ -113,6 +252,7 @@ function NotesView({
   direction,
   playMidi,
   playScale,
+  showFullNeck = true,
 }: NotesViewProps) {
   const tr = useT()
   const noteMidis = ascendingScaleMidis(activeNotes)
@@ -146,24 +286,14 @@ function NotesView({
         ))}
       </div>
 
-      <div className="subsection-heading">
-        <div>
-          <h4>{tr('ws.allNotes')}</h4>
-          <p>{tr('ws.allNotesHint')}</p>
-        </div>
-        <LabelModeToggle preferences={preferences} onChange={onPreferencesChange} />
-      </div>
-      <Fretboard
-        config={preferences.config}
-        locations={locations}
-        labelMode={preferences.fretboardLabels}
-        onPlayNote={playMidi}
-      />
-      <div className="fretboard-legend" aria-label={tr('ws.fretboardLegendAria')}>
-        <span><i className="legend-dot legend-dot--root" /> {tr('ws.tonic')}</span>
-        <span><i className="legend-dot" /> {tr('ws.scaleNotes')}</span>
-        <span>{tr('ws.fullRange', { frets: preferences.config.frets })}</span>
-      </div>
+      {showFullNeck && (
+        <FullNeck
+          locations={locations}
+          preferences={preferences}
+          onPreferencesChange={onPreferencesChange}
+          playMidi={playMidi}
+        />
+      )}
     </section>
   )
 }
@@ -191,23 +321,13 @@ function ScalesView({
   const [requestedFamily, setRequestedFamily] = useState<PatternFamilyChoice>('recommended')
   const [selectedPatternByFamily, setSelectedPatternByFamily] = useState<Record<string, string>>({})
   const [selectedRouteByPattern, setSelectedRouteByPattern] = useState<Record<string, string>>({})
-  const [activeLocationId, setActiveLocationId] = useState<string | null>(null)
-  const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null)
-  const animationTimers = useRef<number[]>([])
-  const generationOptions = scaleGenerationOptions(preferences)
-  const rankedPatterns = rankScalePatterns(patterns, generationOptions)
-  const globallyUniqueGroups = groupScalePatternsForDisplay(rankedPatterns)
-  const markedRecommendationGroups = globallyUniqueGroups
-    .filter((group) => group.pattern.recommended)
-  const recommendationTarget = Math.max(
-    6,
-    rankedPatterns.filter((pattern) => pattern.recommended).length,
-  )
-  const recommendedGroups = [
-    ...markedRecommendationGroups,
-    ...globallyUniqueGroups.filter((group) => !group.pattern.recommended),
-  ].slice(0, recommendationTarget)
-  const patternGroupsByFamily = new Map<PatternFamilyChoice, typeof recommendedGroups>()
+  const {
+    options: generationOptions,
+    ranked: rankedPatterns,
+    recommended: recommendedGroups,
+  } = rankedScaleGroups(patterns, preferences)
+  const playback = usePatternPlayback(preferences.tempo, playEvents)
+  const patternGroupsByFamily = new Map<PatternFamilyChoice, ScalePatternDisplayGroup[]>()
   patternGroupsByFamily.set('recommended', recommendedGroups)
   SCALE_FAMILY_IDS.forEach((familyId) => {
     if (familyId === 'recommended') return
@@ -226,18 +346,9 @@ function ScalesView({
     group.equivalentIds.includes(selectedPatternId),
   ) ?? activeGroups[0]
   const selectedPattern = selectedGroup?.pattern
-  const fallbackRoute: PatternRoute | undefined = selectedPattern
-    ? {
-        id: 'legacy',
-        name: tr('ws.route'),
-        kind: 'modal',
-        ascending: selectedPattern.ascending,
-        descending: selectedPattern.descending,
-      }
-    : undefined
-  const availableRoutes = selectedPattern?.routes && selectedPattern.routes.length > 0
-    ? selectedPattern.routes
-    : fallbackRoute ? [fallbackRoute] : []
+  const availableRoutes: PatternRoute[] = selectedPattern
+    ? routesOf(selectedPattern, tr('ws.route'))
+    : []
   const selectedRouteId = selectedGroup
     ? selectedGroup.equivalentIds
         .map((id) => selectedRouteByPattern[id])
@@ -263,44 +374,12 @@ function ScalesView({
   const showScaleFingerings = preferences.showScaleFingerings ?? true
   const showScaleShifts = preferences.showScaleShifts ?? true
 
-  const clearPlaybackAnimation = useCallback(() => {
-    animationTimers.current.forEach((timer) => window.clearTimeout(timer))
-    animationTimers.current = []
-    setActiveLocationId(null)
-    setActiveStepIndex(null)
-  }, [])
-
+  // Drop a running highlight whenever the shape or the route under it changes.
+  const clearPlayback = playback.clear
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset of playback animation state when the selection changes
-    clearPlaybackAnimation()
-    return clearPlaybackAnimation
-  }, [clearPlaybackAnimation, direction, selectedPattern?.id, selectedRoute?.id])
-
-  const playPattern = () => {
-    const events = selectedEvents
-    clearPlaybackAnimation()
-    playEvents(events)
-    const beatDurationMs = 60_000 / preferences.tempo
-
-    events.forEach((event, index) => {
-      const timer = window.setTimeout(() => {
-        setActiveLocationId(event.locationId ?? null)
-        setActiveStepIndex(index)
-      }, event.startBeat * beatDurationMs)
-      animationTimers.current.push(timer)
-    })
-
-    const finalBeat = events.reduce(
-      (latest, event) => Math.max(latest, event.startBeat + event.durationBeats),
-      0,
-    )
-    animationTimers.current.push(
-      window.setTimeout(() => {
-        setActiveLocationId(null)
-        setActiveStepIndex(null)
-      }, finalBeat * beatDurationMs + 80),
-    )
-  }
+    clearPlayback()
+    return clearPlayback
+  }, [clearPlayback, direction, selectedPattern?.id, selectedRoute?.id])
 
   const comfortLabel = selectedPattern?.ergonomics
     ? selectedPattern.ergonomics.difficulty <= 1
@@ -409,7 +488,7 @@ function ScalesView({
             </div>
             <AudioButton
               label={direction === 'ascending' ? tr('ws.playRouteUp') : tr('ws.playRouteDown')}
-              onClick={playPattern}
+              onClick={() => playback.play(selectedEvents)}
               disabled={selectedEvents.length === 0}
             />
           </div>
@@ -467,8 +546,8 @@ function ScalesView({
             labelMode={preferences.fretboardLabels}
             onPlayNote={playMidi}
             compact
-            activeLocationId={activeLocationId}
-            activeStepIndex={activeStepIndex}
+            activeLocationId={playback.activeLocationId}
+            activeStepIndex={playback.activeStepIndex}
             routeLocationIds={routeLocationIds}
             routeEvents={selectedEvents}
             viewport={viewport}
@@ -486,13 +565,159 @@ function ScalesView({
             locations={selectedPattern.locations}
             events={selectedEvents}
             direction={direction}
-            activeStepIndex={activeStepIndex}
+            activeStepIndex={playback.activeStepIndex}
             showFingerings={showScaleFingerings}
             showShifts={showScaleShifts}
           />
         </>
       )}
     </section>
+  )
+}
+
+/**
+ * One run up and back down, which is how a scale is actually practised. The
+ * routes store the two directions separately and both include the turning
+ * note, so the repeat is dropped when the top of the run matches.
+ */
+function upAndDownEvents(route: PatternRoute): PlayableEvent[] {
+  const up = route.ascending
+  if (up.length === 0) return route.descending
+  const end = up.reduce((latest, event) => Math.max(latest, event.startBeat + event.durationBeats), 0)
+  const turnsOnSameNote = route.descending[0]?.midi === up.at(-1)?.midi
+  const tail = turnsOnSameNote ? route.descending.slice(1) : route.descending
+  const base = tail[0]?.startBeat ?? 0
+  return [...up, ...tail.map((event) => ({ ...event, startBeat: event.startBeat - base + end }))]
+}
+
+interface PracticeScaleViewProps {
+  patterns: PerformancePattern<FretLocation>[]
+  locations: FretLocation[]
+  preferences: GuitarPreferences
+  onPreferencesChange: (preferences: GuitarPreferences) => void
+  pick: number
+  revealed: boolean
+  playMidi: (midi: number) => void
+  playEvents: (events: PlayableEvent[]) => void
+}
+
+/**
+ * The practice fretboard step. The round hands over a number in [0, 1) and the
+ * instrument turns it into a concrete assignment, so the player is sent to a
+ * shape they did not choose instead of the one they always fall back on.
+ */
+function PracticeScaleView({
+  patterns,
+  locations,
+  preferences,
+  onPreferencesChange,
+  pick,
+  revealed,
+  playMidi,
+  playEvents,
+}: PracticeScaleViewProps) {
+  const tr = useT()
+  const metronome = useMetronome()
+  const playback = usePatternPlayback(preferences.tempo, playEvents)
+  const { recommended } = rankedScaleGroups(patterns, preferences)
+  const group = recommended[Math.min(recommended.length - 1, Math.floor(pick * recommended.length))]
+  const pattern = group?.pattern
+  const routes = pattern ? routesOf(pattern, tr('ws.route')) : []
+  const route = routes.find((candidate) => candidate.id === pattern?.defaultRouteId) ?? routes[0]
+  const events = route ? upAndDownEvents(route) : []
+
+  if (!pattern) {
+    return (
+      <div className="empty-state">
+        <strong>{tr('ws.familyUnavailable')}</strong>
+        <p>{tr('ws.familyUnavailableHint')}</p>
+      </div>
+    )
+  }
+
+  const viewport = {
+    fromFret: Math.max(0, pattern.startPosition - 1),
+    toFret: Math.min(preferences.config.frets, pattern.endPosition + 1),
+  }
+
+  return (
+    <div className="practice-assignment">
+      <div className="practice-assignment__head">
+        <div>
+          <span className="eyebrow">{familyLabel(pattern.system)}</span>
+          <h4>{pattern.name}</h4>
+          <p>
+            {tr('ws.fretRange', { start: pattern.startPosition, end: pattern.endPosition })}
+            {route && <> · {route.name}</>}
+          </p>
+        </div>
+        <div className="practice-assignment__controls">
+          <button
+            type="button"
+            className={metronome.running ? 'view-toggle is-active' : 'view-toggle'}
+            aria-pressed={metronome.running}
+            disabled={!metronome.supported}
+            onClick={() =>
+              metronome.running
+                ? metronome.stop()
+                : metronome.start(preferences.tempo, preferences.volume)
+            }
+          >
+            {tr('practice.metronome', { tempo: preferences.tempo })}
+          </button>
+          <AudioButton
+            label={tr('practice.reference')}
+            onClick={() => playback.play(events)}
+            disabled={events.length === 0}
+          />
+        </div>
+      </div>
+
+      {revealed && (
+        <>
+          <Fretboard
+            config={preferences.config}
+            locations={pattern.locations}
+            labelMode={preferences.fretboardLabels}
+            onPlayNote={playMidi}
+            compact
+            activeLocationId={playback.activeLocationId}
+            activeStepIndex={playback.activeStepIndex}
+            routeLocationIds={events.flatMap((event) => (event.locationId ? [event.locationId] : []))}
+            routeEvents={events}
+            viewport={viewport}
+            showFingerings={preferences.showScaleFingerings ?? true}
+            showShifts={preferences.showScaleShifts ?? true}
+          />
+          <Tablature
+            config={preferences.config}
+            locations={pattern.locations}
+            events={events}
+            direction="ascending"
+            label={tr('practice.upAndDown')}
+            activeStepIndex={playback.activeStepIndex}
+            showFingerings={preferences.showScaleFingerings ?? true}
+            showShifts={preferences.showScaleShifts ?? true}
+          />
+        </>
+      )}
+
+      <details className="filter-panel full-neck-panel">
+        <summary>
+          <span>{tr('ws.allNotes')}</span>
+          <span className="filter-summary">{tr('practice.neckHint')}</span>
+        </summary>
+        <div className="full-neck-panel__body">
+          <FullNeck
+            locations={locations}
+            preferences={preferences}
+            onPreferencesChange={onPreferencesChange}
+            playMidi={playMidi}
+            withHeading={false}
+          />
+        </div>
+      </details>
+    </div>
   )
 }
 
@@ -682,11 +907,19 @@ interface ChordsViewProps {
   preferences: GuitarPreferences
   onPreferencesChange: (preferences: GuitarPreferences) => void
   playEvents: (events: PlayableEvent[]) => void
+  /** Practice opens on the degree it just asked about. */
+  initialDegree?: number
 }
 
-function ChordsView({ harmony, preferences, onPreferencesChange, playEvents }: ChordsViewProps) {
+function ChordsView({
+  harmony,
+  preferences,
+  onPreferencesChange,
+  playEvents,
+  initialDegree = 1,
+}: ChordsViewProps) {
   const tr = useT()
-  const [selectedDegree, setSelectedDegree] = useState(1)
+  const [selectedDegree, setSelectedDegree] = useState(initialDegree)
   const [size, setSize] = useState<'triad' | 'seventh'>('triad')
   const [visibleCount, setVisibleCount] = useState(8)
   const degree = harmony[selectedDegree - 1] ?? harmony[0]
@@ -821,6 +1054,7 @@ export function GuitarWorkspace({
   section,
   settingsOpen,
   onCloseSettings,
+  practice,
 }: InstrumentWorkspaceProps) {
   const tr = useT()
   const lang = useLang()
@@ -863,14 +1097,29 @@ export function GuitarWorkspace({
 
   return (
     <>
-      <div className="instrument-meta-row">
-        <span>{tr('ws.stringsCount', { n: preferences.config.strings.length })}</span>
-        <span>{tr('ws.fretsCount', { n: preferences.config.frets })}</span>
-        <span>{hasCagedTopology(preferences.config) ? tr('ws.cagedAvailable') : tr('ws.cagedUnavailable')}</span>
-        {!synth.supported && <span>{tr('ws.audioUnsupported')}</span>}
-      </div>
+      {!practice && (
+        <div className="instrument-meta-row">
+          <span>{tr('ws.stringsCount', { n: preferences.config.strings.length })}</span>
+          <span>{tr('ws.fretsCount', { n: preferences.config.frets })}</span>
+          <span>{hasCagedTopology(preferences.config) ? tr('ws.cagedAvailable') : tr('ws.cagedUnavailable')}</span>
+          {!synth.supported && <span>{tr('ws.audioUnsupported')}</span>}
+        </div>
+      )}
 
-      {section === 'notes' && (
+      {practice?.step === 'scale' && (
+        <PracticeScaleView
+          patterns={patterns}
+          locations={locations}
+          preferences={preferences}
+          onPreferencesChange={setPreferences}
+          pick={practice.pick}
+          revealed={practice.revealed}
+          playMidi={playMidi}
+          playEvents={playEvents}
+        />
+      )}
+
+      {practice?.step !== 'scale' && section === 'notes' && (
         <NotesView
           activeNotes={activeNotes}
           locations={locations}
@@ -879,9 +1128,10 @@ export function GuitarWorkspace({
           direction={shareState.direction}
           playMidi={playMidi}
           playScale={playScale}
+          showFullNeck={practice === undefined}
         />
       )}
-      {section === 'scales' && (
+      {practice?.step !== 'scale' && section === 'scales' && (
         <ScalesView
           patterns={patterns}
           preferences={preferences}
@@ -892,12 +1142,13 @@ export function GuitarWorkspace({
           tonicSymbol={activeNotes[0]?.symbol ?? ''}
         />
       )}
-      {section === 'chords' && (
+      {practice?.step !== 'scale' && section === 'chords' && (
         <ChordsView
           harmony={harmony}
           preferences={preferences}
           onPreferencesChange={setPreferences}
           playEvents={playEvents}
+          initialDegree={practice?.chordDegree}
         />
       )}
 

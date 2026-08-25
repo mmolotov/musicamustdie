@@ -14,6 +14,16 @@ import { useT } from '../i18n'
 interface CircleOfFifthsProps {
   selection: KeySelection
   onSelect: (selection: KeySelection) => void
+  /**
+   * Absolute rotation of the practice needle, in degrees. It only ever grows,
+   * so the CSS transition keeps turning the same way. `null` hides the needle.
+   */
+  needleAngle?: number | null
+  spinning?: boolean
+  /** Replaces the caption under the circle. */
+  caption?: string
+  /** The signature is an answer while the note step is open. */
+  hideSignature?: boolean
 }
 
 const COLORS = [
@@ -72,7 +82,14 @@ function minorSectorLabel(majorPitch: number): string {
   return `${circleTonicLabel(minorPitch, 'minor', defaultSpellingForMajorPitch(majorPitch))}m`
 }
 
-export function CircleOfFifths({ selection, onSelect }: CircleOfFifthsProps) {
+export function CircleOfFifths({
+  selection,
+  onSelect,
+  needleAngle = null,
+  spinning = false,
+  caption,
+  hideSignature = false,
+}: CircleOfFifthsProps) {
   const tr = useT()
   const selectedMajorPitch =
     selection.mode === 'major' ? selection.tonic : getRelativeMajorPitch(selection.tonic)
@@ -211,10 +228,19 @@ export function CircleOfFifths({ selection, onSelect }: CircleOfFifthsProps) {
           {selection.mode === 'major' ? tr('circle.major') : tr('circle.minor')}
         </text>
         <text x="300" y="356" textAnchor="middle" className="circle-center__signature">
-          {signature.label}
+          {hideSignature ? tr('practice.hidden') : signature.label}
         </text>
+        {needleAngle !== null && (
+          <g
+            className={spinning ? 'circle-needle is-spinning' : 'circle-needle'}
+            style={{ transform: `rotate(${needleAngle}deg)` }}
+            aria-hidden="true"
+          >
+            <path d="M 300 48 L 313 8 L 287 8 Z" />
+          </g>
+        )}
       </svg>
-      <p className="circle-help">{tr('circle.help')}</p>
+      <p className="circle-help">{caption ?? tr('circle.help')}</p>
     </div>
   )
 }

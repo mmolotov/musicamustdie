@@ -2,6 +2,20 @@ import type { ComponentType } from 'react'
 import type { BuiltScale, HarmonizedDegree, ScaleNote } from '../music/types'
 import type { DetailSection, ShareState } from '../hooks/useUrlState'
 
+/**
+ * What practice asks the instrument for. The fingering library and the chord
+ * shapes live in the instrument module, so the round hands over the draw and
+ * lets the instrument resolve it into a concrete assignment.
+ */
+export interface PracticeDelegate {
+  step: 'notes' | 'scale' | 'chord'
+  /** Deterministic pick for this round, in [0, 1). */
+  pick: number
+  /** 1-based scale degree the chord step asks about. */
+  chordDegree: number
+  revealed: boolean
+}
+
 export interface InstrumentWorkspaceProps {
   scale: BuiltScale
   activeNotes: ScaleNote[]
@@ -10,6 +24,7 @@ export interface InstrumentWorkspaceProps {
   section: DetailSection
   settingsOpen: boolean
   onCloseSettings: () => void
+  practice?: PracticeDelegate
 }
 
 export interface InstrumentUiModule {

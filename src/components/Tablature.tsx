@@ -10,6 +10,8 @@ interface TablatureProps {
   locations: FretLocation[]
   events: PlayableEvent[]
   direction: ScaleDirection
+  /** Overrides the direction-derived caption — practice runs one pass both ways. */
+  label?: string
   activeStepIndex?: number | null
   showFingerings?: boolean
   showShifts?: boolean
@@ -39,6 +41,7 @@ export function Tablature({
   locations,
   events,
   direction,
+  label,
   activeStepIndex = null,
   showFingerings = false,
   showShifts = false,
@@ -104,7 +107,9 @@ export function Tablature({
       <div className="tab-card__header">
         <div>
           <span className="eyebrow">TAB</span>
-          <strong>{direction === 'ascending' ? tr('tab.ascending') : tr('tab.descending')}</strong>
+          <strong>
+            {label ?? (direction === 'ascending' ? tr('tab.ascending') : tr('tab.descending'))}
+          </strong>
         </div>
         <button type="button" className="text-button" onClick={() => void copy()}>
           {copied ? tr('tab.copied') : tr('tab.copy')}

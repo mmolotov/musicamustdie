@@ -3003,3 +3003,518 @@ footer {
     height: 250px;
   }
 }
+
+/* Practice mode: the wheel needle, the step bar and the answer inputs. */
+.practice-toggle {
+  min-height: 42px;
+  padding: 10px 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  background: rgba(17, 21, 24, 0.84);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.practice-toggle:hover {
+  border-color: rgba(183, 255, 42, 0.5);
+  color: var(--sage);
+}
+
+.practice-toggle.is-active {
+  border-color: var(--sage);
+  color: #090b0d;
+  background: var(--sage);
+  box-shadow: 0 0 22px rgba(183, 255, 42, 0.28);
+}
+
+.circle-needle {
+  transform-box: view-box;
+  transform-origin: 300px 300px;
+  fill: var(--sage);
+  filter: drop-shadow(0 0 9px rgba(183, 255, 42, 0.7));
+  /* A key the player picked gets a short hop; only the wheel takes its time. */
+  transition: transform 420ms cubic-bezier(0.22, 0.75, 0.3, 1);
+}
+
+.circle-needle.is-spinning {
+  transition-duration: 1.2s;
+  transition-timing-function: cubic-bezier(0.16, 0.84, 0.3, 1);
+}
+
+.key-signature-badge.is-hidden {
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.key-signature-badge.is-hidden i {
+  color: var(--muted);
+  text-shadow: none;
+}
+
+.practice-panel {
+  padding: 26px 36px 40px;
+}
+
+.practice-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.practice-bar h3 {
+  margin: 0;
+  font-size: 21px;
+}
+
+.practice-tally {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+}
+
+.practice-tally div {
+  min-width: 74px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--paper-strong);
+  text-align: center;
+}
+
+.practice-tally dt {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.practice-tally dd {
+  margin: 2px 0 0;
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.practice-launch {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 26px;
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  background: var(--paper-strong);
+}
+
+.practice-launch p {
+  max-width: 56ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.practice-spinning {
+  color: var(--sage) !important;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.practice-steps {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.practice-steps li {
+  padding: 6px 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.practice-steps li.is-done {
+  color: var(--ink);
+}
+
+.practice-steps li.is-active {
+  border-color: var(--sage);
+  color: #090b0d;
+  background: var(--sage);
+}
+
+.practice-task {
+  margin: 0 0 22px;
+  font-family: "Arial Black", "Helvetica Neue", Arial, sans-serif;
+  font-size: clamp(19px, 2.3vw, 25px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.practice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.practice-chip {
+  min-width: 46px;
+  min-height: 46px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--paper-strong);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.practice-chip:hover {
+  border-color: rgba(183, 255, 42, 0.45);
+}
+
+.practice-chip.is-active {
+  border-color: var(--sage);
+  color: #090b0d;
+  background: var(--sage);
+}
+
+.practice-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.notes-question {
+  margin-bottom: 24px;
+}
+
+.note-slots {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.note-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  justify-content: center;
+  min-height: 74px;
+  padding: 10px 4px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+  background: transparent;
+}
+
+.note-slot.is-filled {
+  border-style: solid;
+  border-color: rgba(183, 255, 42, 0.42);
+  color: var(--ink);
+  background: var(--paper-strong);
+}
+
+.note-slot__degree {
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+}
+
+.note-slot strong {
+  font-family: Georgia, serif;
+  font-size: 17px;
+}
+
+.chromatic-keyboard {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.chromatic-key {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  min-height: 62px;
+  padding: 10px 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--paper-strong);
+}
+
+.chromatic-key--altered {
+  background: #0d1013;
+}
+
+.chromatic-key:hover:not(:disabled) {
+  border-color: rgba(183, 255, 42, 0.5);
+  transform: translateY(-1px);
+}
+
+.chromatic-key strong {
+  font-family: Georgia, serif;
+  font-size: 16px;
+}
+
+.chromatic-key span {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.practice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.practice-verdict {
+  margin: 0 0 18px;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.practice-verdict--correct {
+  color: var(--sage);
+}
+
+.practice-verdict--wrong {
+  color: var(--coral);
+}
+
+.practice-verdict--skipped {
+  color: var(--yellow);
+}
+
+.practice-answer {
+  margin-bottom: 22px;
+  padding: 18px 22px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper-strong);
+}
+
+.practice-answer strong {
+  font-size: 25px;
+  font-weight: 900;
+}
+
+.note-answers {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.note-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  min-height: 96px;
+  padding: 12px 5px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper-strong);
+}
+
+.note-answer.is-correct {
+  border-color: rgba(183, 255, 42, 0.45);
+}
+
+.note-answer.is-wrong {
+  border-color: rgba(255, 60, 172, 0.45);
+  background: var(--coral-soft);
+}
+
+.note-answer__degree {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.note-answer strong {
+  font-family: Georgia, serif;
+  font-size: 24px;
+}
+
+.note-answer span {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-answer s {
+  color: var(--coral);
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .practice-panel {
+    padding: 22px 20px 32px;
+  }
+
+  .chromatic-keyboard {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .practice-actions .primary-button,
+  .practice-actions .secondary-button,
+  .practice-launch .primary-button {
+    flex: 1;
+  }
+}
+
+@media (max-width: 520px) {
+  /* The practice toggle pushes the header past a phone's width, so the
+     actions drop onto their own row instead of squeezing the logo. */
+  .site-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .header-actions {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+  }
+
+  .note-slots,
+  .note-answers {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .chromatic-keyboard {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .practice-tally div {
+    min-width: 62px;
+    padding: 7px 9px;
+  }
+}
+
+/* Practice: the assigned fingering and the chord question. */
+.practice-assignment {
+  margin-bottom: 24px;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper-strong);
+}
+
+.practice-assignment__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.practice-assignment h4 {
+  margin: 0 0 4px;
+  font-size: 21px;
+}
+
+.practice-assignment__head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.practice-assignment__controls {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.practice-assignment .fretboard-scroll,
+.practice-assignment .tab-card {
+  margin-top: 20px;
+}
+
+.chord-question {
+  margin-bottom: 24px;
+}
+
+.chord-question .control-label {
+  margin-top: 18px;
+}
+
+.chord-question .control-label:first-child {
+  margin-top: 0;
+}
+
+.chromatic-key.is-selected {
+  border-color: var(--sage);
+  color: #090b0d;
+  background: var(--sage);
+}
+
+.chromatic-key.is-selected span {
+  color: rgba(9, 11, 13, 0.68);
+}
+
+@media (max-width: 760px) {
+  .practice-assignment {
+    padding: 18px 15px;
+  }
+
+  .practice-assignment__controls {
+    width: 100%;
+  }
+
+  .practice-assignment__controls .audio-button {
+    flex: 1;
+  }
+}
+
+/* Practice keeps the whole neck one click away instead of on the page. */
+.full-neck-panel {
+  margin: 22px 0 0;
+  background: #0d1013;
+}
+
+.full-neck-panel__body {
+  padding: 16px 16px 18px;
+  border-top: 1px solid var(--line);
+}
+
+.full-neck-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.full-neck-toolbar p {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--muted);
+  font-size: 12px;
+}

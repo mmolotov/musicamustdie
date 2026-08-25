@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { CircleOfFifths } from './components/CircleOfFifths'
 import { getInstrument, listInstruments } from './instruments/registry'
-import { getInstrumentUi } from './instruments/uiRegistry'
+import { getInstrumentUi, type PracticeDelegate } from './instruments/uiRegistry'
 import type { DetailSection } from './hooks/useUrlState'
 import type { MinorVariant } from './music/types'
 import {
@@ -13,6 +13,9 @@ import {
   notesForDirection,
 } from './music/theory'
 import { useUrlState } from './hooks/useUrlState'
+import { usePractice } from './hooks/usePractice'
+import { PracticePanel } from './components/PracticePanel'
+import { currentStep } from './practice/machine'
 import { LANGS, setLang, useLang, useT } from './i18n'
 
 // Instrument icons: "Guitar head" and "Guitar bass head" by Delapouite,
@@ -46,27 +49,73 @@ export default function App() {
   const lang = useLang()
   const [shareState, setShareState] = useUrlState()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const practice = usePractice()
+  const practiceActive = shareState.practice
+  // While the needle is still turning the drawn key is withheld, so the round
+  // on screen stays the previous one instead of spoiling the answer.
+  const practiceSelection = practiceActive ? practice.state.selection : null
+  const selection = practiceSelection ?? shareState.selection
+  const practiceAwaitingKey = practiceActive && practiceSelection === null
+  const practiceStep = practiceActive ? currentStep(practice.state) : null
+  const practiceRevealed = practice.state.phase === 'revealed'
+  // The key signature and the interval formula hand the note step its answer,
+  // so they stay covered until it is graded — and come back for the rest of the
+  // round, where they are only context.
+  const notesStepIndex = practice.state.steps.indexOf('notes')
+  const notesAnswered =
+    practice.state.stepIndex > notesStepIndex ||
+    (practice.state.stepIndex === notesStepIndex && practiceRevealed)
+  const hintsHidden = practiceActive && !notesAnswered
+  // Everything the workspace draws is part of some answer, so it only appears
+  // once the step has been revealed. The fretboard step is the exception: its
+  // assignment is the question.
+  const practiceShowsWorkspace =
+    practiceStep === 'scale' || (practiceStep !== null && practiceRevealed)
+  // The fingering library and the chord shapes live in the instrument module,
+  // so the round hands its draw over and lets the module resolve it.
+  const practiceDelegate: PracticeDelegate | undefined =
+    practiceStep !== null && practiceShowsWorkspace
+      ? {
+          step: practiceStep,
+          pick: practice.state.patternPick,
+          chordDegree: practice.state.chordDegree,
+          revealed: practiceRevealed,
+        }
+      : undefined
+  const practiceSection: DetailSection =
+    practiceStep === 'scale' ? 'scales' : practiceStep === 'chord' ? 'chords' : 'notes'
+  // Practice always drills the ascending form; the descending melodic minor is
+  // a question for the fretboard step.
+  const direction = practiceActive ? 'ascending' : shareState.direction
   const instruments = listInstruments()
   const activeInstrument =
     getInstrument(shareState.instrument) ?? instruments[0]
   const activeUi = activeInstrument ? getInstrumentUi(activeInstrument.id) : undefined
   // `lang` is included so translated labels/spellings recompute on switch.
   const scale = useMemo(
-    () => buildScale(shareState.selection, shareState.minorVariant),
-    [shareState.minorVariant, shareState.selection, lang],
+    () => buildScale(selection, shareState.minorVariant),
+    [shareState.minorVariant, selection, lang],
   )
-  const activeNotes = useMemo(
-    () => notesForDirection(scale, shareState.direction),
-    [scale, shareState.direction],
-  )
+  const activeNotes = useMemo(() => notesForDirection(scale, direction), [scale, direction])
   const harmony = useMemo(() => harmonizeScale(activeNotes), [activeNotes])
-  const keySignature = getKeySignature(shareState.selection)
+  const keySignature = getKeySignature(selection)
   const selectedMajorPitch =
-    shareState.selection.mode === 'major'
-      ? shareState.selection.tonic
-      : getRelativeMajorPitch(shareState.selection.tonic)
+    selection.mode === 'major' ? selection.tonic : getRelativeMajorPitch(selection.tonic)
   const hasEnharmonicPair = [11, 6, 1].includes(selectedMajorPitch)
   const Workspace = activeUi?.Workspace
+  const workspaceShareState = practiceActive
+    ? { ...shareState, selection, direction }
+    : shareState
+
+  const startPractice = () =>
+    setShareState((state) => ({ ...state, practice: true, direction: 'ascending', section: 'notes' }))
+  const stopPractice = () =>
+    setShareState((state) => ({
+      ...state,
+      practice: false,
+      // Leave the player on the key they were just drilling.
+      selection: practice.state.selection ?? state.selection,
+    }))
 
   return (
     <div className="app-shell">
@@ -83,6 +132,14 @@ export default function App() {
           />
         </a>
         <div className="header-actions">
+          <button
+            type="button"
+            className={practiceActive ? 'practice-toggle is-active' : 'practice-toggle'}
+            aria-pressed={practiceActive}
+            onClick={practiceActive ? stopPractice : startPractice}
+          >
+            {practiceActive ? tr('practice.exit') : tr('practice.toggle')}
+          </button>
           <div className="lang-switch" role="group" aria-label={tr('lang.aria')}>
             {LANGS.map((code) => (
               <button
@@ -103,8 +160,16 @@ export default function App() {
         <div className="main-layout">
           <section className="circle-panel" aria-label={tr('circle.panelAria')}>
             <CircleOfFifths
-              selection={shareState.selection}
-              onSelect={(selection) => setShareState((state) => ({ ...state, selection }))}
+              selection={selection}
+              onSelect={(next) =>
+                practiceActive
+                  ? practice.pick(next)
+                  : setShareState((state) => ({ ...state, selection: next }))
+              }
+              caption={practiceActive ? tr('circle.practiceHelp') : undefined}
+              hideSignature={hintsHidden}
+              needleAngle={practiceActive ? practice.state.needleAngle : null}
+              spinning={practice.state.phase === 'spinning'}
             />
           </section>
 
@@ -112,15 +177,22 @@ export default function App() {
             <div className="details-hero">
               <div className="details-hero__topline">
                 <div className="topline-left">
-                <span className="key-signature-badge">
-                  <i aria-hidden="true">{keySignature.accidental === 'sharp'
-                    ? '♯'
-                    : keySignature.accidental === 'flat'
-                      ? '♭'
-                      : '♮'}</i>
-                  <span>{keySignature.label}</span>
-                </span>
-                {hasEnharmonicPair && (
+                {hintsHidden ? (
+                  <span className="key-signature-badge is-hidden">
+                    <i aria-hidden="true">?</i>
+                    <span>{tr('practice.hidden')}</span>
+                  </span>
+                ) : (
+                  <span className="key-signature-badge">
+                    <i aria-hidden="true">{keySignature.accidental === 'sharp'
+                      ? '♯'
+                      : keySignature.accidental === 'flat'
+                        ? '♭'
+                        : '♮'}</i>
+                    <span>{keySignature.label}</span>
+                  </span>
+                )}
+                {!practiceActive && hasEnharmonicPair && (
                   <div className="segmented segmented--small" aria-label={tr('enharmonic.aria')}>
                     <button
                       type="button"
@@ -184,16 +256,29 @@ export default function App() {
               </div>
               <div className="details-title-row">
                 <div>
-                  <span className="eyebrow">{tr('details.selectedKey')}</span>
-                  <h2>{keyDisplayName(shareState.selection)}</h2>
-                  <p>{scale.label} · {scale.formula}</p>
+                  <span className="eyebrow">
+                    {practiceAwaitingKey ? tr('practice.eyebrow') : tr('details.selectedKey')}
+                  </span>
+                  <h2>{practiceAwaitingKey ? tr('practice.noKeyYet') : keyDisplayName(selection)}</h2>
+                  <p>
+                    {practiceAwaitingKey ? (
+                      tr('practice.noKeyHint')
+                    ) : (
+                      <>
+                        {scale.label}
+                        {!hintsHidden && <> · {scale.formula}</>}
+                      </>
+                    )}
+                  </p>
                 </div>
-                <div className="tonic-orbit" aria-hidden="true">
-                  <span>{scale.tonic.symbol}</span>
-                </div>
+                {!practiceAwaitingKey && (
+                  <div className="tonic-orbit" aria-hidden="true">
+                    <span>{scale.tonic.symbol}</span>
+                  </div>
+                )}
               </div>
 
-              {shareState.selection.mode === 'minor' && (
+              {selection.mode === 'minor' && (
                 <div className="variant-controls">
                   <span>{tr('minor.kind')}</span>
                   <div className="variant-scroll" role="group" aria-label={tr('minor.kindAria')}>
@@ -214,7 +299,8 @@ export default function App() {
                 </div>
               )}
 
-              {shareState.selection.mode === 'minor' &&
+              {!practiceActive &&
+                selection.mode === 'minor' &&
                 shareState.minorVariant === 'melodic-classical' && (
                   <div className="direction-control">
                     <span>{tr('direction.hint')}</span>
@@ -238,37 +324,71 @@ export default function App() {
                 )}
             </div>
 
-            <nav className="detail-tabs" aria-label={tr('tabs.aria')}>
-              {SECTIONS.map((section) => (
-                <button
-                  type="button"
-                  key={section}
-                  className={shareState.section === section ? 'is-active' : ''}
-                  aria-current={shareState.section === section ? 'page' : undefined}
-                  onClick={() => setShareState((state) => ({ ...state, section }))}
-                >
-                  <strong>{tr(`tabs.${section}`)}</strong>
-                  <span>{tr(`tabs.${section}.hint`)}</span>
-                </button>
-              ))}
-            </nav>
-
-            {Workspace ? (
-              <Workspace
-                key={activeInstrument?.id}
+            {practiceActive ? (
+              <PracticePanel
+                state={practice.state}
                 scale={scale}
-                activeNotes={activeNotes}
                 harmony={harmony}
-                shareState={shareState}
-                section={shareState.section}
-                settingsOpen={settingsOpen}
-                onCloseSettings={() => setSettingsOpen(false)}
-              />
+                onSpin={practice.spin}
+                onLandNeedle={practice.landNeedle}
+                onRepeat={() => {
+                  if (practice.state.selection) practice.pick(practice.state.selection)
+                }}
+                onReveal={practice.reveal}
+                onAnswer={practice.answer}
+                onNext={practice.next}
+              >
+                {practiceShowsWorkspace && Workspace && (
+                  <Workspace
+                    // A fresh mount per step: the assignment and the chord
+                    // shapes are picked when the view first renders.
+                    key={`${activeInstrument?.id}-${practice.state.round}-${practiceStep}`}
+                    scale={scale}
+                    activeNotes={activeNotes}
+                    harmony={harmony}
+                    shareState={workspaceShareState}
+                    section={practiceSection}
+                    settingsOpen={settingsOpen}
+                    onCloseSettings={() => setSettingsOpen(false)}
+                    practice={practiceDelegate}
+                  />
+                )}
+              </PracticePanel>
             ) : (
-              <div className="empty-state">
-                <strong>{tr('empty.title')}</strong>
-                <p>{tr('empty.hint')}</p>
-              </div>
+              <>
+                <nav className="detail-tabs" aria-label={tr('tabs.aria')}>
+                  {SECTIONS.map((section) => (
+                    <button
+                      type="button"
+                      key={section}
+                      className={shareState.section === section ? 'is-active' : ''}
+                      aria-current={shareState.section === section ? 'page' : undefined}
+                      onClick={() => setShareState((state) => ({ ...state, section }))}
+                    >
+                      <strong>{tr(`tabs.${section}`)}</strong>
+                      <span>{tr(`tabs.${section}.hint`)}</span>
+                    </button>
+                  ))}
+                </nav>
+
+                {Workspace ? (
+                  <Workspace
+                    key={activeInstrument?.id}
+                    scale={scale}
+                    activeNotes={activeNotes}
+                    harmony={harmony}
+                    shareState={workspaceShareState}
+                    section={shareState.section}
+                    settingsOpen={settingsOpen}
+                    onCloseSettings={() => setSettingsOpen(false)}
+                  />
+                ) : (
+                  <div className="empty-state">
+                    <strong>{tr('empty.title')}</strong>
+                    <p>{tr('empty.hint')}</p>
+                  </div>
+                )}
+              </>
             )}
           </section>
         </div>

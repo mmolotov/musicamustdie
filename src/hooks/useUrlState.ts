@@ -15,6 +15,7 @@ export interface ShareState {
   minorVariant: MinorVariant
   direction: ScaleDirection
   section: DetailSection
+  practice: boolean
 }
 
 const DEFAULT_SHARE_STATE: ShareState = {
@@ -23,6 +24,7 @@ const DEFAULT_SHARE_STATE: ShareState = {
   minorVariant: 'natural',
   direction: 'ascending',
   section: 'notes',
+  practice: false,
 }
 
 function oneOf<T extends string>(value: string | null, choices: readonly T[], fallback: T): T {
@@ -57,18 +59,29 @@ function readUrlState(): ShareState {
       ['notes', 'scales', 'chords'],
       'notes',
     ),
+    practice: params.get('practice') === '1',
   }
 }
 
 function writeUrlState(state: ShareState): void {
   const params = new URLSearchParams()
   params.set('instrument', state.instrument)
-  params.set('tonic', String(state.selection.tonic))
-  params.set('mode', state.selection.mode)
-  params.set('spelling', state.selection.spelling)
-  if (state.selection.mode === 'minor') params.set('minorVariant', state.minorVariant)
-  if (state.minorVariant === 'melodic-classical') params.set('direction', state.direction)
-  params.set('section', state.section)
+  if (state.practice) {
+    // The drilled key is drawn by the wheel, so publishing it here would be
+    // stale at best and a peek at the answer at worst. Only the mode, the
+    // minor variant being drilled, and the draw seed survive a reload.
+    params.set('practice', '1')
+    params.set('minorVariant', state.minorVariant)
+    const seed = new URLSearchParams(window.location.search).get('seed')
+    if (seed) params.set('seed', seed)
+  } else {
+    params.set('tonic', String(state.selection.tonic))
+    params.set('mode', state.selection.mode)
+    params.set('spelling', state.selection.spelling)
+    if (state.selection.mode === 'minor') params.set('minorVariant', state.minorVariant)
+    if (state.minorVariant === 'melodic-classical') params.set('direction', state.direction)
+    params.set('section', state.section)
+  }
   const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`
   window.history.replaceState(null, '', nextUrl)
 }
