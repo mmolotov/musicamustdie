@@ -108,7 +108,7 @@ h4 {
   justify-content: space-between;
   width: min(1760px, calc(100% - 48px));
   margin: 0 auto;
-  padding: 28px 0;
+  padding: clamp(16px, 2.4vh, 28px) 0;
   border-bottom: 1px solid rgba(90, 99, 95, 0.16);
 }
 
@@ -122,7 +122,7 @@ h4 {
 
 .brand__logo {
   display: block;
-  height: clamp(50px, 8vw, 96px);
+  height: clamp(50px, min(8vw, 9vh), 96px);
   width: auto;
 }
 
@@ -348,7 +348,7 @@ h4 {
 main {
   width: min(1760px, calc(100% - 48px));
   margin: 0 auto;
-  padding-top: clamp(32px, 4vw, 56px);
+  padding-top: clamp(32px, min(4vw, 3.2vh), 56px);
 }
 
 .eyebrow {
@@ -605,7 +605,7 @@ main {
 .details-title-row h2 {
   margin: 0 0 7px;
   font-family: Georgia, serif;
-  font-size: clamp(38px, 3.5vw, 54px);
+  font-size: clamp(38px, 2.6vw, 46px);
   font-weight: 600;
   line-height: 1;
 }
@@ -1403,7 +1403,9 @@ input[type="range"] {
 
 .voicing-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+  /* The diagram inside is a fixed 205px tall, so a wider card only adds dead
+     space around it — pack more of them instead. */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 13px;
 }
 
@@ -2318,6 +2320,27 @@ footer {
   border-top-color: rgba(183, 255, 42, 0.15);
 }
 
+/* Wide screens put the circle beside the details instead of on top of them.
+   Stacked, a 760px circle fills a 1080p viewport on its own and pushes the
+   whole panel below the fold — which is why the app only ever looked right on
+   a very tall monitor. */
+@media (min-width: 1181px) {
+  .main-layout {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+
+  .circle-panel {
+    position: sticky;
+    top: 20px;
+  }
+
+  .circle-shell {
+    /* Bounded by height as well as width: a short, wide window must not get a
+       circle taller than the screen it sits on. */
+    max-width: min(760px, 66vh);
+  }
+}
+
 @media (max-width: 1180px) {
   .main-layout {
     grid-template-columns: 1fr;
@@ -3156,7 +3179,7 @@ footer {
 .practice-task {
   margin: 0 0 22px;
   font-family: "Arial Black", "Helvetica Neue", Arial, sans-serif;
-  font-size: clamp(19px, 2.3vw, 25px);
+  font-size: clamp(19px, 1.5vw, 24px);
   font-weight: 900;
   letter-spacing: -0.03em;
 }
