@@ -35,7 +35,6 @@ import type { InstrumentWorkspaceProps } from '../instruments/uiRegistry'
 import type { ChordDefinition, ScaleDirection, ScaleNote } from '../music/types'
 import { ascendingScaleMidis, midiNearMiddleC } from '../music/playback'
 import { usePersistentState } from '../hooks/usePersistentState'
-import { useMetronome } from '../hooks/useMetronome'
 import { useSynth } from '../hooks/useSynth'
 import { useVoicings } from '../hooks/useVoicings'
 import { Fretboard } from './Fretboard'
@@ -626,7 +625,6 @@ function PracticeScaleView({
   playEvents,
 }: PracticeScaleViewProps) {
   const tr = useT()
-  const metronome = useMetronome()
   const playback = usePatternPlayback(preferences.tempo, playEvents)
   const { recommended } = rankedScaleGroups(patterns, preferences)
   const group = recommended[Math.min(recommended.length - 1, Math.floor(pick * recommended.length))]
@@ -661,19 +659,6 @@ function PracticeScaleView({
           </p>
         </div>
         <div className="practice-assignment__controls">
-          <button
-            type="button"
-            className={metronome.running ? 'view-toggle is-active' : 'view-toggle'}
-            aria-pressed={metronome.running}
-            disabled={!metronome.supported}
-            onClick={() =>
-              metronome.running
-                ? metronome.stop()
-                : metronome.start(preferences.tempo, preferences.volume)
-            }
-          >
-            {tr('practice.metronome', { tempo: preferences.tempo })}
-          </button>
           <AudioButton
             label={tr('practice.reference')}
             onClick={() => playback.play(events)}
@@ -1202,7 +1187,6 @@ function PracticePentatonicView({
   playEvents,
 }: PracticePentatonicViewProps) {
   const tr = useT()
-  const metronome = useMetronome()
   const playback = usePatternPlayback(preferences.tempo, playEvents)
   const pattern = patterns[Math.min(patterns.length - 1, Math.floor(pick * patterns.length))]
   const route = pattern ? routesOf(pattern, tr('ws.route'))[0] : undefined
@@ -1226,19 +1210,6 @@ function PracticePentatonicView({
           <p>{tr('ws.fretRange', { start: pattern.startPosition, end: pattern.endPosition })}</p>
         </div>
         <div className="practice-assignment__controls">
-          <button
-            type="button"
-            className={metronome.running ? 'view-toggle is-active' : 'view-toggle'}
-            aria-pressed={metronome.running}
-            disabled={!metronome.supported}
-            onClick={() =>
-              metronome.running
-                ? metronome.stop()
-                : metronome.start(preferences.tempo, preferences.volume)
-            }
-          >
-            {tr('practice.metronome', { tempo: preferences.tempo })}
-          </button>
           <AudioButton
             label={tr('practice.reference')}
             onClick={() => playback.play(events)}

@@ -3264,7 +3264,6 @@ footer {
 }
 
 .practice-steps li {
-  padding: 6px 13px;
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--muted);
@@ -3272,8 +3271,29 @@ footer {
   font-weight: 800;
 }
 
+/* The chip is the button: a graded step can be reopened by clicking it, and a
+   step still ahead is disabled rather than hidden, so the round stays legible. */
+.practice-steps li button {
+  padding: 6px 13px;
+  border: 0;
+  border-radius: inherit;
+  color: inherit;
+  font: inherit;
+  background: none;
+}
+
+.practice-steps li button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
 .practice-steps li.is-done {
   color: var(--ink);
+}
+
+.practice-steps li.is-done button:hover {
+  border-color: var(--sage);
+  color: var(--sage);
 }
 
 .practice-steps li.is-active {

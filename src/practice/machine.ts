@@ -35,7 +35,8 @@ export function initialPracticeState(seed: number): PracticeState {
     pentatonicPick: 0,
     steps: PRACTICE_STEPS,
     stepIndex: 0,
-    outcome: null,
+    reachedIndex: 0,
+    outcomes: PRACTICE_STEPS.map(() => null),
     tally: { correct: 0, wrong: 0, skipped: 0 },
   }
 }
@@ -79,6 +80,18 @@ function bumpTally(tally: PracticeTally, outcome: StepOutcome): PracticeTally {
   return { ...tally, [outcome]: tally[outcome] + 1 }
 }
 
+function clearOutcomes(steps: readonly PracticeStepId[]): (StepOutcome | null)[] {
+  return steps.map(() => null)
+}
+
+/** How the step at `stepIndex` should be shown: graded steps open revealed. */
+function phaseForStep(
+  outcomes: readonly (StepOutcome | null)[],
+  stepIndex: number,
+): 'answering' | 'revealed' {
+  return outcomes[stepIndex] != null ? 'revealed' : 'answering'
+}
+
 export function practiceReducer(state: PracticeState, action: PracticeAction): PracticeState {
   switch (action.type) {
     case 'spin': {
@@ -95,7 +108,8 @@ export function practiceReducer(state: PracticeState, action: PracticeAction): P
         patternPick: assignment.patternPick,
         pentatonicPick: assignment.pentatonicPick,
         stepIndex: 0,
-        outcome: null,
+        reachedIndex: 0,
+        outcomes: clearOutcomes(state.steps),
       }
     }
     case 'pick': {
@@ -114,7 +128,8 @@ export function practiceReducer(state: PracticeState, action: PracticeAction): P
         pentatonicPick: assignment.pentatonicPick,
         round: state.round + 1,
         stepIndex: 0,
-        outcome: null,
+        reachedIndex: 0,
+        outcomes: clearOutcomes(state.steps),
       }
     }
     case 'spinEnded': {
@@ -129,17 +144,23 @@ export function practiceReducer(state: PracticeState, action: PracticeAction): P
     }
     case 'reveal': {
       if (state.phase !== 'answering') return state
-      return { ...state, phase: 'revealed', outcome: null }
+      return { ...state, phase: 'revealed' }
     }
     case 'answer': {
       // Graded either straight from the question, or afterwards on a step the
-      // player checks against the revealed answer themselves.
-      const gradable = state.phase === 'answering' || (state.phase === 'revealed' && state.outcome === null)
+      // player checks against the revealed answer themselves. A step already
+      // graded stays as it was — walking back through a round must not let the
+      // same answer land in the tally twice.
+      const graded = currentOutcome(state)
+      const gradable =
+        graded === null && (state.phase === 'answering' || state.phase === 'revealed')
       if (!gradable) return state
       return {
         ...state,
         phase: 'revealed',
-        outcome: action.outcome,
+        outcomes: state.outcomes.map((outcome, index) =>
+          index === state.stepIndex ? action.outcome : outcome,
+        ),
         tally: bumpTally(state.tally, action.outcome),
       }
     }
@@ -147,13 +168,45 @@ export function practiceReducer(state: PracticeState, action: PracticeAction): P
       if (state.phase !== 'revealed') return state
       const stepIndex = state.stepIndex + 1
       if (stepIndex >= state.steps.length) {
-        return { ...state, phase: 'idle', stepIndex: 0, outcome: null }
+        return {
+          ...state,
+          phase: 'idle',
+          stepIndex: 0,
+          reachedIndex: 0,
+          outcomes: clearOutcomes(state.steps),
+        }
       }
-      return { ...state, phase: 'answering', stepIndex, outcome: null }
+      // Coming forward again after a look back lands on a step that is already
+      // graded, and it opens on its answer rather than asking twice.
+      return {
+        ...state,
+        phase: phaseForStep(state.outcomes, stepIndex),
+        stepIndex,
+        reachedIndex: Math.max(state.reachedIndex, stepIndex),
+      }
+    }
+    case 'goToStep': {
+      // Anywhere this round has already been — no further. Jumping ahead of
+      // that would hand over an answer the round never asked for.
+      const { stepIndex } = action
+      const inRound = state.phase === 'answering' || state.phase === 'revealed'
+      if (!inRound || stepIndex === state.stepIndex) return state
+      if (stepIndex < 0 || stepIndex > state.reachedIndex) return state
+      return { ...state, phase: phaseForStep(state.outcomes, stepIndex), stepIndex }
     }
   }
 }
 
 export function currentStep(state: PracticeState): PracticeStepId | null {
   return state.steps[state.stepIndex] ?? null
+}
+
+/** The grade of the step on screen, or null while it is still a question. */
+export function currentOutcome(state: PracticeState): StepOutcome | null {
+  return state.outcomes[state.stepIndex] ?? null
+}
+
+/** Steps the round has already opened — the ones it can be walked back to. */
+export function canVisitStep(state: PracticeState, stepIndex: number): boolean {
+  return stepIndex <= state.reachedIndex
 }

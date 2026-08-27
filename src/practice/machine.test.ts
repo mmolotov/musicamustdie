@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canVisitStep,
+  currentOutcome,
   currentStep,
   initialPracticeState,
   isSelfChecked,
@@ -44,7 +46,7 @@ describe('машина состояний тренировки', () => {
 
     const scale = practiceReducer(graded, { type: 'next' })
     expect(currentStep(scale)).toBe('scale')
-    expect(scale.outcome).toBeNull()
+    expect(currentOutcome(scale)).toBeNull()
 
     const pentatonic = practiceReducer(
       practiceReducer(scale, { type: 'answer', outcome: 'skipped' }),
@@ -82,14 +84,69 @@ describe('машина состояний тренировки', () => {
 
     const revealed = practiceReducer(state, { type: 'reveal' })
     expect(revealed.phase).toBe('revealed')
-    expect(revealed.outcome).toBeNull()
+    expect(currentOutcome(revealed)).toBeNull()
     expect(revealed.tally).toEqual(tallyBefore)
 
     const graded = practiceReducer(revealed, { type: 'answer', outcome: 'wrong' })
-    expect(graded.outcome).toBe('wrong')
+    expect(currentOutcome(graded)).toBe('wrong')
     expect(graded.tally.wrong).toBe(tallyBefore.wrong + 1)
     // Второй раз тот же шаг не засчитывается.
     expect(practiceReducer(graded, { type: 'answer', outcome: 'correct' })).toBe(graded)
+  })
+
+  it('возвращает к пройденному шагу и не засчитывает его дважды', () => {
+    let state = spinTo(initialPracticeState(5))
+    state = practiceReducer(state, { type: 'answer', outcome: 'correct' })
+    state = practiceReducer(state, { type: 'next' })
+    state = practiceReducer(state, { type: 'answer', outcome: 'wrong' })
+    state = practiceReducer(state, { type: 'next' })
+    expect(currentStep(state)).toBe('pentatonic')
+    const tallyBefore = state.tally
+
+    const back = practiceReducer(state, { type: 'goToStep', stepIndex: 0 })
+    expect(currentStep(back)).toBe('notes')
+    // Пройденный шаг открывается сразу с ответом, а не спрашивает заново.
+    expect(back.phase).toBe('revealed')
+    expect(currentOutcome(back)).toBe('correct')
+    expect(practiceReducer(back, { type: 'answer', outcome: 'wrong' }).tally).toEqual(tallyBefore)
+
+    // Вперёд идём через те же шаги, и уже оценённый снова открыт с ответом.
+    const forward = practiceReducer(back, { type: 'next' })
+    expect(currentStep(forward)).toBe('scale')
+    expect(forward.phase).toBe('revealed')
+    expect(currentOutcome(forward)).toBe('wrong')
+
+    const backToPentatonic = practiceReducer(forward, { type: 'next' })
+    expect(currentStep(backToPentatonic)).toBe('pentatonic')
+    expect(backToPentatonic.phase).toBe('answering')
+    expect(backToPentatonic.tally).toEqual(tallyBefore)
+
+    // Дойденный, но не оценённый шаг тоже открыт для возврата — и остаётся
+    // вопросом, а не ответом.
+    const backAgain = practiceReducer(
+      practiceReducer(backToPentatonic, { type: 'goToStep', stepIndex: 0 }),
+      { type: 'goToStep', stepIndex: 2 },
+    )
+    expect(currentStep(backAgain)).toBe('pentatonic')
+    expect(backAgain.phase).toBe('answering')
+    expect(currentOutcome(backAgain)).toBeNull()
+  })
+
+  it('не пускает дальше того, докуда раунд дошёл', () => {
+    const state = spinTo(initialPracticeState(5))
+    expect(canVisitStep(state, 0)).toBe(true)
+    expect(canVisitStep(state, 1)).toBe(false)
+    // До шага ещё не дошли — прыжок к нему ничего не меняет.
+    expect(practiceReducer(state, { type: 'goToStep', stepIndex: 2 })).toBe(state)
+    expect(practiceReducer(state, { type: 'goToStep', stepIndex: -1 })).toBe(state)
+  })
+
+  it('новый раунд стирает оценки предыдущего, но не счёт сессии', () => {
+    let state = spinTo(initialPracticeState(5))
+    state = practiceReducer(state, { type: 'answer', outcome: 'correct' })
+    const next = spinTo(state)
+    expect(next.outcomes.every((outcome) => outcome === null)).toBe(true)
+    expect(next.tally).toEqual(state.tally)
   })
 
   it('разыгрывает задание раунда вместе с тональностью', () => {
@@ -149,7 +206,7 @@ describe('выбор тональности вручную', () => {
     const picked = pick(state, aFlatMajor)
     expect(picked.selection).toEqual(aFlatMajor)
     expect(picked.stepIndex).toBe(0)
-    expect(picked.outcome).toBeNull()
+    expect(picked.outcomes.every((outcome) => outcome === null)).toBe(true)
     // Счёт сессии не сбрасывается.
     expect(picked.tally).toEqual(state.tally)
   })

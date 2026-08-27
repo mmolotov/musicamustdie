@@ -6,7 +6,7 @@ import {
   type PentatonicScale,
 } from '../music/pentatonic'
 import type { BuiltScale, ChordDefinition, HarmonizedDegree, ScaleNote } from '../music/types'
-import { currentStep, isSelfChecked } from '../practice/machine'
+import { canVisitStep, currentOutcome, currentStep, isSelfChecked } from '../practice/machine'
 import {
   checkChord,
   checkNoteSlots,
@@ -211,21 +211,54 @@ function ChordAnswer({ chord }: { chord: ChordDefinition }) {
   )
 }
 
-function PracticeSteps({ state }: { state: PracticeState }) {
+/**
+ * The steps of the round, and the way back through them: a step already graded
+ * can be reopened to look at its answer again, while one still ahead stays
+ * shut — jumping forward would hand over an answer that was never earned.
+ */
+function PracticeSteps({
+  state,
+  onGoToStep,
+}: {
+  state: PracticeState
+  onGoToStep: (stepIndex: number) => void
+}) {
   const tr = useT()
   return (
     <ol className="practice-steps" aria-label={tr('practice.stepsAria')}>
-      {state.steps.map((step, index) => (
-        <li
-          key={step}
-          className={index === state.stepIndex ? 'is-active' : index < state.stepIndex ? 'is-done' : ''}
-          aria-current={index === state.stepIndex ? 'step' : undefined}
-        >
-          {tr(`practice.step.${step}`)}
-        </li>
-      ))}
+      {state.steps.map((step, index) => {
+        const isCurrent = index === state.stepIndex
+        return (
+          <li
+            key={step}
+            className={isCurrent ? 'is-active' : index < state.stepIndex ? 'is-done' : ''}
+            aria-current={isCurrent ? 'step' : undefined}
+          >
+            <button
+              type="button"
+              disabled={!canVisitStep(state, index) || isCurrent}
+              title={canVisitStep(state, index) && !isCurrent ? tr('practice.stepBack') : undefined}
+              onClick={() => onGoToStep(index)}
+            >
+              {tr(`practice.step.${step}`)}
+            </button>
+          </li>
+        )
+      })}
     </ol>
   )
+}
+
+/** Everything the player types during one round, cleared when the key changes. */
+interface RoundInputs {
+  round: number
+  slots: NoteSlots
+  chordRoot: number | null
+  chordQuality: TriadQuality | null
+}
+
+function freshInputs(round: number): RoundInputs {
+  return { round, slots: emptyNoteSlots(), chordRoot: null, chordQuality: null }
 }
 
 export interface PracticePanelProps {
@@ -239,6 +272,8 @@ export interface PracticePanelProps {
   onReveal: () => void
   onAnswer: (outcome: StepOutcome) => void
   onNext: () => void
+  /** Reopens a step of this round that has already been graded. */
+  onGoToStep: (stepIndex: number) => void
   /** The instrument's own step body — the assigned fingering, the shapes. */
   children?: ReactNode
 }
@@ -253,14 +288,26 @@ export function PracticePanel({
   onReveal,
   onAnswer,
   onNext,
+  onGoToStep,
   children,
 }: PracticePanelProps) {
   const tr = useT()
-  const [slots, setSlots] = useState<NoteSlots>(emptyNoteSlots)
-  const [chordRoot, setChordRoot] = useState<number | null>(null)
-  const [chordQuality, setChordQuality] = useState<TriadQuality | null>(null)
+  const [inputs, setInputs] = useState<RoundInputs>(() => freshInputs(state.round))
+  // Answers stay put for the length of a round, because a step reopened later
+  // has to show what the player actually entered rather than an empty row. A
+  // new key — drawn, chosen on the circle or repeated — clears them, and doing
+  // it here rather than in an effect keeps the blank row from ever rendering.
+  if (inputs.round !== state.round) setInputs(freshInputs(state.round))
+  const { slots, chordRoot, chordQuality } = inputs
+  const setSlots = (update: (current: NoteSlots) => NoteSlots) =>
+    setInputs((current) => ({ ...current, slots: update(current.slots) }))
+  const setChordRoot = (root: number | null) =>
+    setInputs((current) => ({ ...current, chordRoot: root }))
+  const setChordQuality = (quality: TriadQuality | null) =>
+    setInputs((current) => ({ ...current, chordQuality: quality }))
 
   const step = currentStep(state)
+  const outcome = currentOutcome(state)
   const { selection } = state
   const notes = scale.ascending
   // Built from the key rather than the drilled scale: the pentatonic ignores
@@ -269,28 +316,11 @@ export function PracticePanel({
   const chord = harmony[state.chordDegree - 1]?.triad
   const isLastStep = state.stepIndex === state.steps.length - 1
 
-  const resetInputs = () => {
-    setSlots(emptyNoteSlots())
-    setChordRoot(null)
-    setChordQuality(null)
-  }
-
-  const startRound = () => {
-    resetInputs()
-    onSpin()
-  }
-
   const advance = () => {
-    resetInputs()
     onNext()
     // The last step rolls straight into the next key: an extra "spin again"
     // screen between every round is pure friction.
     if (isLastStep) onSpin()
-  }
-
-  const repeat = () => {
-    resetInputs()
-    onRepeat()
   }
 
   const gradeAndAdvance = (outcome: StepOutcome) => {
@@ -356,7 +386,7 @@ export function PracticePanel({
       {state.phase === 'idle' && (
         <div className="practice-launch">
           <p>{tr('practice.intro')}</p>
-          <button type="button" className="primary-button" onClick={startRound}>
+          <button type="button" className="primary-button" onClick={onSpin}>
             {tr('practice.start')}
           </button>
         </div>
@@ -373,7 +403,7 @@ export function PracticePanel({
 
       {(state.phase === 'answering' || state.phase === 'revealed') && selection && step && (
         <>
-          <PracticeSteps state={state} />
+          <PracticeSteps state={state} onGoToStep={onGoToStep} />
           <p className="practice-task">
             {tr(`practice.task.${step}`, {
               key: scaleDisplayName(scale),
@@ -444,25 +474,25 @@ export function PracticePanel({
             </>
           ) : (
             <>
-              {state.outcome !== null && (
-                <p className={`practice-verdict practice-verdict--${state.outcome}`}>
-                  {tr(`practice.verdict.${state.outcome}`)}
+              {outcome !== null && (
+                <p className={`practice-verdict practice-verdict--${outcome}`}>
+                  {tr(`practice.verdict.${outcome}`)}
                 </p>
               )}
               {/* A correct answer needs no correction table: the regular
                   "seven degrees" strip renders right below with the same notes. */}
-              {step === 'notes' && state.outcome !== 'correct' && (
+              {step === 'notes' && outcome !== 'correct' && (
                 <NoteAnswerRow slots={slots} notes={notes} />
               )}
               {/* Same rule as the notes step: a correct answer is already
                   spelled out by the chord view that follows. */}
-              {step === 'chord' && chord && state.outcome !== 'correct' && (
+              {step === 'chord' && chord && outcome !== 'correct' && (
                 <ChordAnswer chord={chord} />
               )}
               {step === 'pentatonic' && <PentatonicDegrees pentatonic={pentatonic} />}
               {children}
               <div className="practice-actions">
-                {isSelfChecked(step) && state.outcome === null ? (
+                {isSelfChecked(step) && outcome === null ? (
                   <>
                     <button
                       type="button"
@@ -485,7 +515,7 @@ export function PracticePanel({
                       {isLastStep ? tr('practice.nextRound') : tr('practice.next')}
                     </button>
                     {isLastStep && (
-                      <button type="button" className="secondary-button" onClick={repeat}>
+                      <button type="button" className="secondary-button" onClick={onRepeat}>
                         {tr('practice.again')}
                       </button>
                     )}

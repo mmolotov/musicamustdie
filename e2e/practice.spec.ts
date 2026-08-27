@@ -45,7 +45,6 @@ test('полный раунд: барабан, ноты, гамма, пента�
   await expect(page.getByText(/Сыграйте гамму вверх и вниз в этой аппликатуре/)).toBeVisible()
   await expect(page.locator('.practice-assignment h4')).toBeVisible()
   await expect(page.locator('.practice-assignment__head p')).toContainText('лады')
-  await expect(page.getByRole('button', { name: /Метроном/ })).toBeVisible()
   // Ноты уже названы, так что знаки больше не прячем.
   await expect(page.locator('.key-signature-badge')).toContainText('1 диез')
   // Диаграмма и таб закрыты, пока не сыграно.
@@ -92,6 +91,46 @@ test('полный раунд: барабан, ноты, гамма, пента�
 
   await page.getByRole('button', { name: 'Выйти из тренировки' }).click()
   await expect(page.getByRole('button', { name: /Гамма и TAB/ })).toBeVisible()
+})
+
+test('можно вернуться к пройденному шагу и снова уйти вперёд', async ({ page }) => {
+  await page.goto('/?practice=1&seed=101')
+  await page.getByRole('button', { name: 'Крутить барабан' }).click()
+
+  await page.getByRole('button', { name: 'Не помню — показать' }).click()
+  await page.getByRole('button', { name: 'Дальше' }).click()
+  await page.getByRole('button', { name: 'Сыграл — показать' }).click()
+  await page.getByRole('button', { name: 'Получилось', exact: true }).click()
+  await expect(page.getByText(/Сыграйте этот бокс пентатоники/)).toBeVisible()
+
+  // Возврат к нотам: шаг открывается сразу с ответом, оценка прежняя.
+  await page.getByRole('button', { name: 'Ноты', exact: true }).click()
+  await expect(page.getByText(/Соберите гамму по ступеням/)).toBeVisible()
+  await expect(page.locator('.practice-verdict')).toHaveText('Пропущено')
+  await expect(page.locator('.note-answer strong')).toHaveText([
+    'E', 'F♯', 'G', 'A', 'B', 'C', 'D',
+  ])
+  // Счёт не меняется от прогулок по раунду.
+  await expect(page.locator('.practice-tally dd').nth(2)).toHaveText('1')
+  await expect(page.locator('.practice-tally dd').first()).toHaveText('1')
+
+  // Шаг впереди закрыт, пока до него не дошли.
+  await expect(page.getByRole('button', { name: 'Аккорд', exact: true })).toBeDisabled()
+
+  // А дойденный, но не оценённый шаг открыт — и возвращается вопросом.
+  await page.getByRole('button', { name: 'Пентатоника', exact: true }).click()
+  await expect(page.getByText(/Сыграйте этот бокс пентатоники/)).toBeVisible()
+  await expect(page.locator('.practice-verdict')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Ноты', exact: true }).click()
+
+  // Вперёд: гамма снова открыта с уже выставленной оценкой, без переспроса.
+  await page.getByRole('button', { name: 'Дальше' }).click()
+  await expect(page.getByText(/Сыграйте гамму вверх и вниз/)).toBeVisible()
+  await expect(page.locator('.practice-verdict')).toHaveText('Верно')
+  await page.getByRole('button', { name: 'Дальше' }).click()
+  await expect(page.getByText(/Сыграйте этот бокс пентатоники/)).toBeVisible()
+  await expect(page.locator('.practice-verdict')).toHaveCount(0)
+  await expect(page.locator('.practice-tally dd').first()).toHaveText('1')
 })
 
 test('пропуск подсказки и разбор ошибки в аккорде', async ({ page }) => {

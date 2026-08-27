@@ -344,6 +344,7 @@ export default function App() {
                 onReveal={practice.reveal}
                 onAnswer={practice.answer}
                 onNext={practice.next}
+                onGoToStep={practice.goToStep}
               >
                 {practiceShowsWorkspace && Workspace && (
                   <Workspace
