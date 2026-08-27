@@ -127,6 +127,25 @@ test('на HD-десктопе круг и состав тональности �
   await expect(page.locator('.note-strip')).toBeInViewport()
 })
 
+test('на 4K-мониторе интерфейс масштабируется, а не занимает половину экрана', async ({ page }) => {
+  // Раскладка упирается в 1760px, поэтому на 4K она занимала 46% ширины
+  // подписями по 14px: в CSS-пикселях верно, а глазами — мелко.
+  await page.setViewportSize({ width: 3840, height: 2160 })
+  await page.goto('/')
+
+  const metrics = await page.evaluate(() => ({
+    zoom: getComputedStyle(document.querySelector('.app-shell') as Element).zoom,
+    mainWidth: Math.round(document.querySelector('main')!.getBoundingClientRect().width),
+    overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  }))
+
+  expect(Number(metrics.zoom)).toBeGreaterThan(1.5)
+  // Больше двух третей ширины экрана вместо 1760px.
+  expect(metrics.mainWidth).toBeGreaterThan(2560)
+  expect(metrics.overflowX).toBeLessThanOrEqual(1)
+  await expect(page.locator('.note-strip')).toBeInViewport()
+})
+
 test('мобильная версия: гриф гаммы прокручивается вбок, а таб следует за воспроизведением', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/?section=scales')
