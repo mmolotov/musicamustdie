@@ -651,6 +651,20 @@ main {
   white-space: nowrap;
 }
 
+/* One line about the variant on screen: what its raised degrees actually do. */
+.variant-hint {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.play-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .variant-scroll {
   display: flex;
   gap: 6px;
@@ -686,7 +700,10 @@ main {
 
 .detail-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* Four tabs in a column that is a fraction of the page: they share the row
+     evenly and the labels wrap inside their own cell instead of onto a second
+     row of tabs. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   padding: 0 20px;
   border-bottom: 1px solid var(--line);
   background: #fbfaf6;
@@ -845,6 +862,55 @@ main {
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The pentatonic row carries the key's seven degrees plus, on blues, the ♭5 —
+   so it sizes itself instead of assuming seven columns like the notes tab. */
+.note-strip--pentatonic {
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+}
+
+/* The two degrees the pentatonic leaves behind: still readable, plainly out. */
+.note-card.is-dropped {
+  border-style: dashed;
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.note-card.is-blue {
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(96, 165, 250, 0.12);
+}
+
+.fret-note.is-accent .fret-note__marker {
+  fill: #74d6ff;
+}
+
+div.note-card:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.pentatonic-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.pentatonic-note {
+  margin: -14px 0 24px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.practice-pentatonic {
+  margin-bottom: 20px;
+}
+
+.practice-pentatonic .note-strip {
+  margin-bottom: 10px;
 }
 
 .subsection-heading {
@@ -1028,6 +1094,10 @@ main {
   background: var(--coral);
 }
 
+.legend-dot--blue {
+  background: #74d6ff;
+}
+
 .info-callout,
 .error-callout {
   display: flex;
@@ -1094,11 +1164,81 @@ main {
   box-shadow: inset 0 0 0 1px rgba(50, 108, 93, 0.1);
 }
 
-.pattern-summary {
-  margin: 5px 0 14px;
-  padding: 14px 16px;
-  border-radius: 13px;
-  background: #f4f3ee;
+/* The whole library, one system per heading. Systems stopped being a control
+   over the list — they are how the list itself reads. */
+.library-sections {
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.library-sections section + section {
+  margin-top: 14px;
+}
+
+.library-sections h4 {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Inside the disclosure there is room to wrap, so the sections lay their
+   shapes out in a grid instead of stacking six horizontal scrollbars. */
+.library-sections .pattern-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  overflow: visible;
+  margin-bottom: 0;
+  padding: 0;
+}
+
+.library-sections .pattern-picker .pattern-chip {
+  min-width: 0;
+  flex: none;
+}
+
+/* What the chip already says, kept beside the play button. */
+.pattern-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 12px;
+}
+
+.pattern-line p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pattern-line strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.pattern-details {
+  padding: 4px 16px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.pattern-details p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.view-panel {
+  min-width: 220px;
+  margin: 0;
+}
+
+.view-panel .scale-view-toolbar {
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--line);
 }
 
 .pattern-tags {
@@ -2023,6 +2163,23 @@ footer {
   box-shadow: inset 0 0 20px rgba(255, 60, 172, 0.05);
 }
 
+.note-card.is-dropped {
+  border-color: rgba(146, 156, 152, 0.4);
+  background: #0d1012;
+  opacity: 0.45;
+}
+
+.note-card.is-blue {
+  border-color: rgba(116, 214, 255, 0.66);
+  background: rgba(116, 214, 255, 0.1);
+  box-shadow: inset 0 0 20px rgba(116, 214, 255, 0.06);
+}
+
+.fret-note.is-accent .fret-note__marker {
+  fill: #74d6ff;
+  filter: drop-shadow(0 0 6px rgba(116, 214, 255, 0.55));
+}
+
 .note-card__degree {
   color: #929c98;
 }
@@ -2098,6 +2255,10 @@ footer {
 .legend-dot--root {
   background: var(--coral);
   box-shadow: 0 0 7px rgba(255, 60, 172, 0.6);
+}
+
+.legend-dot--blue {
+  background: #74d6ff;
 }
 
 .info-callout,
@@ -2481,8 +2642,16 @@ footer {
   }
 
   .detail-tabs button {
-    padding-right: 8px;
-    padding-left: 8px;
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
+  /* Four labels across a phone: they shrink and wrap inside their own cell
+     rather than running over the tab next door. */
+  .detail-tabs strong {
+    font-size: 13px;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
   }
 
   .detail-tabs span {
@@ -2740,6 +2909,13 @@ footer {
   scroll-snap-align: start;
 }
 
+.pattern-line {
+  padding: 12px 15px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #111519;
+}
+
 .pattern-summary__title {
   display: flex;
   flex-wrap: wrap;
@@ -2774,7 +2950,7 @@ footer {
 
 .scale-route-row {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
   margin: 18px 0 12px;
@@ -3179,7 +3355,6 @@ footer {
 }
 
 .practice-steps li {
-  padding: 6px 13px;
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--muted);
@@ -3187,8 +3362,29 @@ footer {
   font-weight: 800;
 }
 
+/* The chip is the button: a graded step can be reopened by clicking it, and a
+   step still ahead is disabled rather than hidden, so the round stays legible. */
+.practice-steps li button {
+  padding: 6px 13px;
+  border: 0;
+  border-radius: inherit;
+  color: inherit;
+  font: inherit;
+  background: none;
+}
+
+.practice-steps li button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
 .practice-steps li.is-done {
   color: var(--ink);
+}
+
+.practice-steps li.is-done button:hover {
+  border-color: var(--sage);
+  color: var(--sage);
 }
 
 .practice-steps li.is-active {

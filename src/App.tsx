@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CircleOfFifths } from './components/CircleOfFifths'
 import { getInstrument, listInstruments } from './instruments/registry'
 import { getInstrumentUi, type PracticeDelegate } from './instruments/uiRegistry'
@@ -15,7 +15,7 @@ import {
 import { useUrlState } from './hooks/useUrlState'
 import { usePractice } from './hooks/usePractice'
 import { PracticePanel } from './components/PracticePanel'
-import { currentStep } from './practice/machine'
+import { currentStep, isSelfChecked } from './practice/machine'
 import { LANGS, setLang, useLang, useT } from './i18n'
 
 // Instrument icons: "Guitar head" and "Guitar bass head" by Delapouite,
@@ -42,7 +42,7 @@ function InstrumentIcon({ instrumentId }: { instrumentId: string }) {
 }
 
 const MINOR_VARIANTS: MinorVariant[] = ['natural', 'harmonic', 'melodic-classical', 'melodic-jazz']
-const SECTIONS: DetailSection[] = ['notes', 'scales', 'chords']
+const SECTIONS: DetailSection[] = ['notes', 'scales', 'pentatonic', 'chords']
 
 export default function App() {
   const tr = useT()
@@ -70,7 +70,7 @@ export default function App() {
   // once the step has been revealed. The fretboard step is the exception: its
   // assignment is the question.
   const practiceShowsWorkspace =
-    practiceStep === 'scale' || (practiceStep !== null && practiceRevealed)
+    isSelfChecked(practiceStep) || (practiceStep !== null && practiceRevealed)
   // The fingering library and the chord shapes live in the instrument module,
   // so the round hands its draw over and lets the module resolve it.
   const practiceDelegate: PracticeDelegate | undefined =
@@ -78,12 +78,19 @@ export default function App() {
       ? {
           step: practiceStep,
           pick: practice.state.patternPick,
+          pentatonicPick: practice.state.pentatonicPick,
           chordDegree: practice.state.chordDegree,
           revealed: practiceRevealed,
         }
       : undefined
   const practiceSection: DetailSection =
-    practiceStep === 'scale' ? 'scales' : practiceStep === 'chord' ? 'chords' : 'notes'
+    practiceStep === 'scale'
+      ? 'scales'
+      : practiceStep === 'pentatonic'
+        ? 'pentatonic'
+        : practiceStep === 'chord'
+          ? 'chords'
+          : 'notes'
   // Practice always drills the ascending form; the descending melodic minor is
   // a question for the fretboard step.
   const direction = practiceActive ? 'ascending' : shareState.direction
@@ -106,6 +113,16 @@ export default function App() {
   const workspaceShareState = practiceActive
     ? { ...shareState, selection, direction }
     : shareState
+
+  // Every key and every tab is its own shareable URL, so the tab title says
+  // which one it is — in a browser history, in a bookmark and in search.
+  useEffect(() => {
+    document.title = practiceActive
+      ? `${tr('practice.toggle')} · musicamustdie`
+      : `${keyDisplayName(selection)} · ${tr(`tabs.${shareState.section}`)} · musicamustdie`
+    // `lang` is a dependency in fact if not in form: `tr` keeps its identity
+    // across a language switch, the strings behind it do not.
+  }, [practiceActive, selection, shareState.section, tr, lang])
 
   const startPractice = () =>
     setShareState((state) => ({ ...state, practice: true, direction: 'ascending', section: 'notes' }))
@@ -299,6 +316,12 @@ export default function App() {
                 </div>
               )}
 
+              {/* Four names that differ by one or two degrees: say which, so the
+                  row is a choice rather than a quiz. */}
+              {selection.mode === 'minor' && (
+                <p className="variant-hint">{tr(`minorVariant.${shareState.minorVariant}.hint`)}</p>
+              )}
+
               {!practiceActive &&
                 selection.mode === 'minor' &&
                 shareState.minorVariant === 'melodic-classical' && (
@@ -337,6 +360,7 @@ export default function App() {
                 onReveal={practice.reveal}
                 onAnswer={practice.answer}
                 onNext={practice.next}
+                onGoToStep={practice.goToStep}
               >
                 {practiceShowsWorkspace && Workspace && (
                   <Workspace

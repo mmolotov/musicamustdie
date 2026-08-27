@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import type { BuiltScale, HarmonizedDegree, ScaleNote } from '../music/types'
 import type { DetailSection, ShareState } from '../hooks/useUrlState'
+import type { PracticeStepId } from '../practice/types'
 
 /**
  * What practice asks the instrument for. The fingering library and the chord
@@ -8,9 +9,11 @@ import type { DetailSection, ShareState } from '../hooks/useUrlState'
  * lets the instrument resolve it into a concrete assignment.
  */
 export interface PracticeDelegate {
-  step: 'notes' | 'scale' | 'chord'
+  step: PracticeStepId
   /** Deterministic pick for this round, in [0, 1). */
   pick: number
+  /** Second pick, for the box the pentatonic step assigns. */
+  pentatonicPick: number
   /** 1-based scale degree the chord step asks about. */
   chordDegree: number
   revealed: boolean

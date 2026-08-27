@@ -18,6 +18,7 @@ export interface PracticeControls {
   reveal: () => void
   answer: (outcome: StepOutcome) => void
   next: () => void
+  goToStep: (stepIndex: number) => void
 }
 
 function readSeed(): number {
@@ -79,6 +80,10 @@ export function usePractice(): PracticeControls {
     [dispatch],
   )
   const next = useCallback(() => dispatch({ type: 'next' }), [dispatch])
+  const goToStep = useCallback(
+    (stepIndex: number) => dispatch({ type: 'goToStep', stepIndex }),
+    [dispatch],
+  )
 
-  return { state, spin, landNeedle, pick, reveal, answer, next }
+  return { state, spin, landNeedle, pick, reveal, answer, next, goToStep }
 }

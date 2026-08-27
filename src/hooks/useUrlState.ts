@@ -7,7 +7,7 @@ import type {
   ScaleDirection,
 } from '../music/types'
 
-export type DetailSection = 'notes' | 'scales' | 'chords'
+export type DetailSection = 'notes' | 'scales' | 'pentatonic' | 'chords'
 
 export interface ShareState {
   instrument: string
@@ -56,7 +56,7 @@ function readUrlState(): ShareState {
     ),
     section: oneOf<DetailSection>(
       params.get('section'),
-      ['notes', 'scales', 'chords'],
+      ['notes', 'scales', 'pentatonic', 'chords'],
       'notes',
     ),
     practice: params.get('practice') === '1',

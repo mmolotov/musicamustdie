@@ -4,7 +4,7 @@
 
 **[Open the app →](https://mmolotov.github.io/musicamustdie/)**
 
-An interactive circle of fourths and fifths for guitar: fretboard map, a library of CAGED / positional / 3NPS / one-octave / hybrid two-octave / diagonal fingerings, tablature, diatonic chords, a practice-form generator, and a practice mode that spins the wheel for a random key and drills its notes, fingering and chords with every hint hidden until you answer.
+An interactive circle of fourths and fifths for guitar: fretboard map, a library of CAGED / positional / 3NPS / one-octave / hybrid two-octave / diagonal fingerings, tablature, diatonic chords, the five pentatonic boxes with the blues ♭5, a practice-form generator, and a practice mode that spins the wheel for a random key and drills its notes, fingering, pentatonic and chords with every hint hidden until you answer.
 
 Built with React, TypeScript, and Vite. The app is fully static and needs no application server.
 

@@ -8,6 +8,7 @@ import type {
 } from '../instruments/types'
 import {
   generateGuitarPatterns,
+  generatePentatonicBoxPatterns,
   groupScalePatternsForDisplay,
   guitarSpec,
   hasCagedTopology,
@@ -22,11 +23,17 @@ import {
   type VoicingConstraints,
 } from '../instruments/guitar'
 import { getFrettedSpec } from '../instruments/fretted'
+import {
+  buildPentatonic,
+  defaultFlavor,
+  pentatonicDisplayName,
+  type PentatonicScale,
+} from '../music/pentatonic'
+import { keyDisplayName } from '../music/theory'
 import type { InstrumentWorkspaceProps } from '../instruments/uiRegistry'
 import type { ChordDefinition, ScaleDirection, ScaleNote } from '../music/types'
 import { ascendingScaleMidis, midiNearMiddleC } from '../music/playback'
 import { usePersistentState } from '../hooks/usePersistentState'
-import { useMetronome } from '../hooks/useMetronome'
 import { useSynth } from '../hooks/useSynth'
 import { useVoicings } from '../hooks/useVoicings'
 import { Fretboard } from './Fretboard'
@@ -237,9 +244,8 @@ interface NotesViewProps {
   locations: FretLocation[]
   preferences: GuitarPreferences
   onPreferencesChange: (preferences: GuitarPreferences) => void
-  direction: ScaleDirection
   playMidi: (midi: number) => void
-  playScale: () => void
+  playScale: (direction: ScaleDirection) => void
   /** Practice moves the whole neck onto the fretboard step, behind a click. */
   showFullNeck?: boolean
 }
@@ -249,7 +255,6 @@ function NotesView({
   locations,
   preferences,
   onPreferencesChange,
-  direction,
   playMidi,
   playScale,
   showFullNeck = true,
@@ -264,10 +269,13 @@ function NotesView({
           <span className="eyebrow">{tr('ws.scaleContent')}</span>
           <h3 id="notes-heading">{tr('ws.sevenDegrees')}</h3>
         </div>
-        <AudioButton
-          label={direction === 'ascending' ? tr('ws.playUp') : tr('ws.playDown')}
-          onClick={playScale}
-        />
+        {/* Both directions are always on offer. Tying playback to the ↑/↓ of
+            the melodic minor left every other key stuck on whichever one was
+            picked there, with no control in sight to put it back. */}
+        <div className="play-pair">
+          <AudioButton label={tr('ws.playUp')} onClick={() => playScale('ascending')} />
+          <AudioButton label={tr('ws.playDown')} onClick={() => playScale('descending')} />
+        </div>
       </div>
 
       <div className="note-strip">
@@ -298,11 +306,40 @@ function NotesView({
   )
 }
 
+/** One shape in the library: what it is called, where it sits, how it runs. */
+function PatternChip({
+  pattern,
+  isActive,
+  withFamily = false,
+  onSelect,
+}: {
+  pattern: PerformancePattern<FretLocation>
+  isActive: boolean
+  withFamily?: boolean
+  onSelect: (id: string) => void
+}) {
+  const tr = useT()
+  return (
+    <button
+      type="button"
+      role="listitem"
+      className={isActive ? 'pattern-chip is-active' : 'pattern-chip'}
+      onClick={() => onSelect(pattern.id)}
+    >
+      <strong>{pattern.name}</strong>
+      <span>
+        {tr('ws.fretRange', { start: pattern.startPosition, end: pattern.endPosition })}
+        {withFamily && <> · {familyLabel(pattern.system)}</>}
+        {pattern.preferredVariant && <> · {tr('ws.bestStart.inline')}</>}
+      </span>
+    </button>
+  )
+}
+
 interface ScalesViewProps {
   patterns: PerformancePattern<FretLocation>[]
   preferences: GuitarPreferences
   onPreferencesChange: (preferences: GuitarPreferences) => void
-  direction: ScaleDirection
   playMidi: (midi: number) => void
   playEvents: (events: PlayableEvent[]) => void
   tonicSymbol: string
@@ -312,39 +349,32 @@ function ScalesView({
   patterns,
   preferences,
   onPreferencesChange,
-  direction,
   playMidi,
   playEvents,
   tonicSymbol,
 }: ScalesViewProps) {
   const tr = useT()
-  const [requestedFamily, setRequestedFamily] = useState<PatternFamilyChoice>('recommended')
-  const [selectedPatternByFamily, setSelectedPatternByFamily] = useState<Record<string, string>>({})
+  const [selectedPatternId, setSelectedPatternId] = useState('')
   const [selectedRouteByPattern, setSelectedRouteByPattern] = useState<Record<string, string>>({})
   const {
-    options: generationOptions,
     ranked: rankedPatterns,
     recommended: recommendedGroups,
   } = rankedScaleGroups(patterns, preferences)
   const playback = usePatternPlayback(preferences.tempo, playEvents)
-  const patternGroupsByFamily = new Map<PatternFamilyChoice, ScalePatternDisplayGroup[]>()
-  patternGroupsByFamily.set('recommended', recommendedGroups)
-  SCALE_FAMILY_IDS.forEach((familyId) => {
-    if (familyId === 'recommended') return
-    patternGroupsByFamily.set(
-      familyId,
-      groupScalePatternsForDisplay(
-        rankedPatterns.filter((pattern) => pattern.system === familyId),
-      ),
+  // The systems are not a control any more, they are how the full list reads:
+  // six recommended shapes cover the neck, and the other twenty-odd sit under
+  // one disclosure with a heading each.
+  const librarySections = SCALE_FAMILY_IDS.flatMap((familyId) => {
+    if (familyId === 'recommended') return []
+    const groups = groupScalePatternsForDisplay(
+      rankedPatterns.filter((pattern) => pattern.system === familyId),
     )
+    return groups.length > 0 ? [{ familyId, groups }] : []
   })
-  const effectiveFamily = requestedFamily
-  const activeGroups = patternGroupsByFamily.get(effectiveFamily) ?? []
-  const activePatterns = activeGroups.map((group) => group.pattern)
-  const selectedPatternId = selectedPatternByFamily[effectiveFamily] ?? ''
-  const selectedGroup = activeGroups.find((group) =>
-    group.equivalentIds.includes(selectedPatternId),
-  ) ?? activeGroups[0]
+  const libraryCount = librarySections.reduce((sum, section) => sum + section.groups.length, 0)
+  const allGroups = [...recommendedGroups, ...librarySections.flatMap((section) => section.groups)]
+  const selectedGroup =
+    allGroups.find((group) => group.equivalentIds.includes(selectedPatternId)) ?? recommendedGroups[0]
   const selectedPattern = selectedGroup?.pattern
   const availableRoutes: PatternRoute[] = selectedPattern
     ? routesOf(selectedPattern, tr('ws.route'))
@@ -356,9 +386,10 @@ function ScalesView({
     : undefined
   const selectedRoute =
     availableRoutes.find((route) => route.id === selectedRouteId) ?? availableRoutes[0]
-  const selectedEvents = selectedRoute
-    ? direction === 'ascending' ? selectedRoute.ascending : selectedRoute.descending
-    : []
+  // The library is a library of shapes, and a shape is learnt upwards: the
+  // descending run belongs to the notes tab, where the melodic minor actually
+  // changes on the way down.
+  const selectedEvents = selectedRoute?.ascending ?? []
   const routeLocationIds = selectedEvents.flatMap((event) =>
     event.locationId ? [event.locationId] : [],
   )
@@ -379,23 +410,8 @@ function ScalesView({
   useEffect(() => {
     clearPlayback()
     return clearPlayback
-  }, [clearPlayback, direction, selectedPattern?.id, selectedRoute?.id])
+  }, [clearPlayback, selectedPattern?.id, selectedRoute?.id])
 
-  const comfortLabel = selectedPattern?.ergonomics
-    ? selectedPattern.ergonomics.difficulty <= 1
-      ? tr('ws.comfort.easy')
-      : selectedPattern.ergonomics.difficulty <= 3
-        ? tr('ws.comfort.medium')
-        : tr('ws.comfort.hard')
-    : tr('ws.comfort.none')
-  const comfortTone = selectedPattern?.ergonomics
-    ? selectedPattern.ergonomics.difficulty <= 1
-      ? 'easy'
-      : selectedPattern.ergonomics.difficulty <= 3 ? 'medium' : 'hard'
-    : 'medium'
-  const profileLabel = generationOptions.reachProfile === 'compact'
-    ? tr('ws.profile.compact')
-    : generationOptions.reachProfile === 'stretch' ? tr('ws.profile.stretch') : tr('ws.profile.balanced')
   const viewport = selectedPattern
     ? {
         fromFret: Math.max(0, selectedPattern.startPosition - 1),
@@ -405,89 +421,73 @@ function ScalesView({
 
   return (
     <section className="workspace-section" aria-labelledby="scales-heading">
-      <div className="section-heading section-heading--wrap">
+      <div className="section-heading">
         <div>
           <span className="eyebrow">{tr('ws.scaleFingerings')}</span>
           <h3 id="scales-heading">{tr('ws.fingeringLibrary')}</h3>
         </div>
-        <span className="practice-profile-badge">{tr('ws.profileBadge', { profile: profileLabel })}</span>
       </div>
 
-      <div className="scale-family-tabs" role="tablist" aria-label={tr('ws.familyTabsAria')}>
-        {SCALE_FAMILY_IDS.map((familyId) => {
-          const count = patternGroupsByFamily.get(familyId)?.length ?? 0
-          return (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={effectiveFamily === familyId}
-              className={effectiveFamily === familyId ? 'is-active' : ''}
-              key={familyId}
-              onClick={() => setRequestedFamily(familyId)}
-            >
-              {familyLabel(familyId)}<small>{count}</small>
-            </button>
-          )
-        })}
-      </div>
-
-      {activePatterns.length === 0 || !selectedPattern ? (
+      {allGroups.length === 0 || !selectedPattern ? (
         <div className="empty-state">
           <strong>{tr('ws.familyUnavailable')}</strong>
           <p>{tr('ws.familyUnavailableHint')}</p>
         </div>
       ) : (
         <>
+          {/* Six shapes that between them cover the neck. The rest of the
+              library is a click away rather than a row of tabs on top. */}
+          <p className="control-label">{tr('ws.bestShapes')}</p>
           <div className="pattern-picker" role="list" aria-label={tr('ws.positionsAria')}>
-            {activePatterns.map((pattern) => (
-              <button
-                type="button"
-                role="listitem"
-                key={pattern.id}
-                className={selectedPattern.id === pattern.id ? 'pattern-chip is-active' : 'pattern-chip'}
-                onClick={() => setSelectedPatternByFamily((current) => ({
-                  ...current,
-                  [effectiveFamily]: pattern.id,
-                }))}
-              >
-                <strong>{pattern.name}</strong>
-                <span>
-                  {tr('ws.fretRange', { start: pattern.startPosition, end: pattern.endPosition })}
-                  {effectiveFamily === 'recommended' && (
-                    <> · {familyLabel(pattern.system)}</>
-                  )}
-                  {pattern.preferredVariant && <> · {tr('ws.bestStart.inline')}</>}
-                </span>
-              </button>
+            {recommendedGroups.map((group) => (
+              <PatternChip
+                key={group.pattern.id}
+                pattern={group.pattern}
+                withFamily
+                isActive={group.equivalentIds.includes(selectedPattern.id)}
+                onSelect={setSelectedPatternId}
+              />
             ))}
           </div>
 
-          <div className="pattern-summary">
-            <div>
-              <span className="eyebrow">{tr('ws.selectedFingering')}</span>
-              <div className="pattern-summary__title">
-                <h4>{selectedPattern.name}</h4>
-                <span className={`comfort-badge comfort-badge--${comfortTone}`}>{comfortLabel}</span>
-              </div>
-              <p>{selectedPattern.description}</p>
-              {selectedGroup.aliasNames.length > 0 && (
-                <p className="pattern-equivalents">
-                  {tr('ws.matchesOnBoard')} <strong>{selectedGroup.aliasNames.join(', ')}</strong>
-                </p>
-              )}
-              <p className="route-summary">{tr('ws.routeSummary')} <strong>{routeLabel}</strong></p>
-              {selectedPattern.tags && selectedPattern.tags.length > 0 && (
-                <div className="pattern-tags" aria-label={tr('ws.patternTagsAria')}>
-                  {selectedPattern.tags.map((tag) => <span key={tag}>{tag}</span>)}
-                  {selectedPattern.preferredVariant && <span>{tr('ws.bestStart')}</span>}
-                  {selectedPattern.ergonomics && (
-                    <span>{tr('ws.shiftsCount', { n: selectedPattern.ergonomics.shifts })}</span>
-                  )}
-                </div>
-              )}
+          <details className="filter-panel">
+            <summary>
+              <span>{tr('ws.wholeLibrary')}</span>
+              <span className="filter-summary">{libraryCount}</span>
+            </summary>
+            <div className="library-sections">
+              {librarySections.map((section) => (
+                <section key={section.familyId}>
+                  <h4>{familyLabel(section.familyId)}</h4>
+                  <div className="pattern-picker" role="list" aria-label={familyLabel(section.familyId)}>
+                    {section.groups.map((group) => (
+                      <PatternChip
+                        key={group.pattern.id}
+                        pattern={group.pattern}
+                        isActive={group.equivalentIds.includes(selectedPattern.id)}
+                        onSelect={setSelectedPatternId}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
             </div>
+          </details>
+
+          {/* One line for the shape on screen: what it is, where it sits, what
+              the run covers — and the button that plays it. */}
+          <div className="pattern-line">
+            <p>
+              <strong>{selectedPattern.name}</strong>
+              {' · '}
+              {tr('ws.fretRange', { start: selectedPattern.startPosition, end: selectedPattern.endPosition })}
+              {' · '}
+              {familyLabel(selectedPattern.system)}
+              {' · '}
+              {tr('ws.routeSummary')} <strong>{routeLabel}</strong>
+            </p>
             <AudioButton
-              label={direction === 'ascending' ? tr('ws.playRouteUp') : tr('ws.playRouteDown')}
+              label={tr('ws.playRoute')}
               onClick={() => playback.play(selectedEvents)}
               disabled={selectedEvents.length === 0}
             />
@@ -514,7 +514,11 @@ function ScalesView({
                 ))}
               </div>
             </div>
-            <div className="scale-view-toolbar">
+            <details className="filter-panel view-panel">
+              <summary>
+                <span>{tr('ws.viewOptions')}</span>
+              </summary>
+              <div className="scale-view-toolbar">
               <LabelModeToggle preferences={preferences} onChange={onPreferencesChange} />
               <button
                 type="button"
@@ -538,7 +542,8 @@ function ScalesView({
               >
                 {tr('ws.transitions')}
               </button>
-            </div>
+              </div>
+            </details>
           </div>
           <Fretboard
             config={preferences.config}
@@ -564,7 +569,7 @@ function ScalesView({
             config={preferences.config}
             locations={selectedPattern.locations}
             events={selectedEvents}
-            direction={direction}
+            direction="ascending"
             activeStepIndex={playback.activeStepIndex}
             showFingerings={showScaleFingerings}
             showShifts={showScaleShifts}
@@ -617,7 +622,6 @@ function PracticeScaleView({
   playEvents,
 }: PracticeScaleViewProps) {
   const tr = useT()
-  const metronome = useMetronome()
   const playback = usePatternPlayback(preferences.tempo, playEvents)
   const { recommended } = rankedScaleGroups(patterns, preferences)
   const group = recommended[Math.min(recommended.length - 1, Math.floor(pick * recommended.length))]
@@ -652,19 +656,6 @@ function PracticeScaleView({
           </p>
         </div>
         <div className="practice-assignment__controls">
-          <button
-            type="button"
-            className={metronome.running ? 'view-toggle is-active' : 'view-toggle'}
-            aria-pressed={metronome.running}
-            disabled={!metronome.supported}
-            onClick={() =>
-              metronome.running
-                ? metronome.stop()
-                : metronome.start(preferences.tempo, preferences.volume)
-            }
-          >
-            {tr('practice.metronome', { tempo: preferences.tempo })}
-          </button>
           <AudioButton
             label={tr('practice.reference')}
             onClick={() => playback.play(events)}
@@ -902,6 +893,345 @@ function VoicingCard({ voicing, chord, preferences, playEvents }: VoicingCardPro
   )
 }
 
+interface PentatonicDegreeRowProps {
+  pentatonic: PentatonicScale
+  playMidi: (midi: number) => void
+}
+
+/**
+ * The parent scale with its two dropped degrees greyed out, which is the whole
+ * idea in one row: a pentatonic is the key minus the notes that rub. The blues
+ * ♭5 slots in at its own pitch rather than replacing one of the five.
+ */
+function PentatonicDegreeRow({ pentatonic, playMidi }: PentatonicDegreeRowProps) {
+  const tr = useT()
+  const droppedDegrees = new Set(pentatonic.omitted.map((note) => note.degree))
+  const cards = [
+    ...pentatonic.parent.ascending.map((note) => ({
+      note,
+      dropped: droppedDegrees.has(note.degree),
+      blue: false,
+    })),
+    ...(pentatonic.blueNote && pentatonic.notes.includes(pentatonic.blueNote)
+      ? [{ note: pentatonic.blueNote, dropped: false, blue: true }]
+      : []),
+  ].sort((a, b) => a.note.interval - b.note.interval)
+  const midis = ascendingScaleMidis(cards.map((card) => card.note))
+
+  return (
+    <div className="note-strip note-strip--pentatonic">
+      {cards.map((card, index) => {
+        const modifiers = [
+          card.note.degree === 1 && !card.blue ? 'is-root' : '',
+          card.dropped ? 'is-dropped' : '',
+          card.blue ? 'is-blue' : '',
+        ].filter(Boolean)
+        return (
+          <button
+            type="button"
+            className={['note-card', ...modifiers].join(' ')}
+            key={`${card.note.symbol}-${card.note.degreeLabel}`}
+            onClick={() => playMidi(midis[index] ?? midiNearMiddleC(card.note.pitchClass))}
+            aria-label={tr('ws.degreeNoteAria', {
+              degree: card.note.degree,
+              note: card.note.accessibleName,
+            })}
+          >
+            <span className="note-card__degree">{card.note.degreeLabel}</span>
+            <strong>{card.note.symbol}</strong>
+            <span>{card.blue ? tr('ws.pent.blueNote') : card.note.solfege}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+interface PentatonicBoardProps {
+  pattern: PerformancePattern<FretLocation>
+  preferences: GuitarPreferences
+  playMidi: (midi: number) => void
+  playback: PatternPlayback
+  events: PlayableEvent[]
+  blueNote: ScaleNote | null
+}
+
+/** The selected box on the neck and in tab — shared by the tab and practice. */
+function PentatonicBoard({
+  pattern,
+  preferences,
+  playMidi,
+  playback,
+  events,
+  blueNote,
+}: PentatonicBoardProps) {
+  const tr = useT()
+  const viewport = {
+    fromFret: Math.max(0, pattern.startPosition - 1),
+    toFret: Math.min(preferences.config.frets, pattern.endPosition + 1),
+  }
+  const showFingerings = preferences.showScaleFingerings ?? true
+
+  return (
+    <>
+      <Fretboard
+        config={preferences.config}
+        locations={pattern.locations}
+        labelMode={preferences.fretboardLabels}
+        onPlayNote={playMidi}
+        compact
+        activeLocationId={playback.activeLocationId}
+        activeStepIndex={playback.activeStepIndex}
+        routeLocationIds={events.flatMap((event) => (event.locationId ? [event.locationId] : []))}
+        routeEvents={events}
+        viewport={viewport}
+        accentPitchClasses={blueNote ? [blueNote.pitchClass] : undefined}
+        showFingerings={showFingerings}
+        showShifts={preferences.showScaleShifts ?? true}
+      />
+      <div className="fretboard-legend scale-legend" aria-label={tr('ws.scaleLegendAria')}>
+        <span><i className="legend-dot legend-dot--root" /> {tr('ws.tonic')}</span>
+        <span><i className="legend-dot" /> {tr('ws.routeLegend')}</span>
+        {blueNote && (
+          <span>
+            <i className="legend-dot legend-dot--blue" /> {tr('ws.pent.blueNote')} · {blueNote.symbol}
+          </span>
+        )}
+      </div>
+      <Tablature
+        config={preferences.config}
+        locations={pattern.locations}
+        events={events}
+        direction="ascending"
+        label={tr('practice.upAndDown')}
+        activeStepIndex={playback.activeStepIndex}
+        showFingerings={showFingerings}
+        showShifts={preferences.showScaleShifts ?? true}
+      />
+    </>
+  )
+}
+
+interface PentatonicViewProps {
+  pentatonic: PentatonicScale
+  patterns: PerformancePattern<FretLocation>[]
+  preferences: GuitarPreferences
+  onPreferencesChange: (preferences: GuitarPreferences) => void
+  blues: boolean
+  onBluesChange: (blues: boolean) => void
+  playMidi: (midi: number) => void
+  playEvents: (events: PlayableEvent[]) => void
+}
+
+function PentatonicView({
+  pentatonic,
+  patterns,
+  preferences,
+  onPreferencesChange,
+  blues,
+  onBluesChange,
+  playMidi,
+  playEvents,
+}: PentatonicViewProps) {
+  const tr = useT()
+  const playback = usePatternPlayback(preferences.tempo, playEvents)
+  const [selectedBoxId, setSelectedBoxId] = useState<string>('')
+  const selectedPattern = patterns.find((pattern) => pattern.id === selectedBoxId) ?? patterns[0]
+  const route = selectedPattern ? routesOf(selectedPattern, tr('ws.route'))[0] : undefined
+  const events = route ? upAndDownEvents(route) : []
+
+  const clearPlayback = playback.clear
+  useEffect(() => {
+    clearPlayback()
+    return clearPlayback
+  }, [clearPlayback, selectedPattern?.id])
+
+  return (
+    <section className="workspace-section" aria-labelledby="pentatonic-heading">
+      <div className="section-heading section-heading--wrap">
+        <div>
+          <span className="eyebrow">{tr('ws.pent.eyebrow')}</span>
+          <h3 id="pentatonic-heading">{pentatonicDisplayName(pentatonic)}</h3>
+        </div>
+        <div className="pentatonic-controls">
+          <button
+            type="button"
+            className={blues ? 'view-toggle is-active' : 'view-toggle'}
+            aria-pressed={blues}
+            aria-label={tr('ws.pent.bluesAria')}
+            onClick={() => onBluesChange(!blues)}
+          >
+            {tr('ws.pent.blues')}
+          </button>
+        </div>
+      </div>
+
+      <PentatonicDegreeRow pentatonic={pentatonic} playMidi={playMidi} />
+      <p className="pentatonic-note">
+        {tr('ws.pent.dropped', {
+          notes: pentatonic.omitted.map((note) => note.symbol).join(', '),
+        })}
+        {' · '}
+        {tr('ws.pent.relative', { name: keyDisplayName(pentatonic.relative) })}
+      </p>
+
+      {!selectedPattern ? (
+        <div className="empty-state">
+          <strong>{tr('ws.pent.noBoxes')}</strong>
+          <p>{tr('ws.pent.noBoxesHint')}</p>
+        </div>
+      ) : (
+        <>
+          <div className="subsection-heading">
+            <div>
+              <h4>{tr('ws.pent.boxesAria')}</h4>
+              <p>{tr('ws.pent.boxesHint')}</p>
+            </div>
+            <LabelModeToggle preferences={preferences} onChange={onPreferencesChange} />
+          </div>
+
+          <div className="pattern-picker" role="list" aria-label={tr('ws.pent.boxesAria')}>
+            {patterns.map((pattern) => (
+              <button
+                type="button"
+                role="listitem"
+                key={pattern.id}
+                className={
+                  selectedPattern.id === pattern.id ? 'pattern-chip is-active' : 'pattern-chip'
+                }
+                onClick={() => setSelectedBoxId(pattern.id)}
+              >
+                <strong>{pattern.name}</strong>
+                <span>
+                  {tr('ws.fretRange', {
+                    start: pattern.startPosition,
+                    end: pattern.endPosition,
+                  })}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="pattern-summary">
+            <div>
+              <span className="eyebrow">{tr('ws.selectedFingering')}</span>
+              <div className="pattern-summary__title">
+                <h4>{selectedPattern.name}</h4>
+              </div>
+              <p>{selectedPattern.description}</p>
+            </div>
+            <AudioButton
+              label={tr('ws.pent.play')}
+              onClick={() => playback.play(events)}
+              disabled={events.length === 0}
+            />
+          </div>
+
+          <PentatonicBoard
+            pattern={selectedPattern}
+            preferences={preferences}
+            playMidi={playMidi}
+            playback={playback}
+            events={events}
+            blueNote={blues ? pentatonic.blueNote : null}
+          />
+        </>
+      )}
+    </section>
+  )
+}
+
+interface PracticePentatonicViewProps {
+  patterns: PerformancePattern<FretLocation>[]
+  /** Every note of the pentatonic across the whole neck, behind the disclosure. */
+  locations: FretLocation[]
+  preferences: GuitarPreferences
+  onPreferencesChange: (preferences: GuitarPreferences) => void
+  pick: number
+  revealed: boolean
+  playMidi: (midi: number) => void
+  playEvents: (events: PlayableEvent[]) => void
+}
+
+/**
+ * The pentatonic step of a round. The box is drawn for the player, and the
+ * neck stays covered until they say they have played it — the degrees above it
+ * are already on screen, so the question is the shape, not the notes.
+ */
+function PracticePentatonicView({
+  patterns,
+  locations,
+  preferences,
+  onPreferencesChange,
+  pick,
+  revealed,
+  playMidi,
+  playEvents,
+}: PracticePentatonicViewProps) {
+  const tr = useT()
+  const playback = usePatternPlayback(preferences.tempo, playEvents)
+  const pattern = patterns[Math.min(patterns.length - 1, Math.floor(pick * patterns.length))]
+  const route = pattern ? routesOf(pattern, tr('ws.route'))[0] : undefined
+  const events = route ? upAndDownEvents(route) : []
+
+  if (!pattern) {
+    return (
+      <div className="empty-state">
+        <strong>{tr('ws.pent.noBoxes')}</strong>
+        <p>{tr('ws.pent.noBoxesHint')}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="practice-assignment">
+      <div className="practice-assignment__head">
+        <div>
+          <span className="eyebrow">{familyLabel(pattern.system)}</span>
+          <h4>{pattern.name}</h4>
+          <p>{tr('ws.fretRange', { start: pattern.startPosition, end: pattern.endPosition })}</p>
+        </div>
+        <div className="practice-assignment__controls">
+          <AudioButton
+            label={tr('practice.reference')}
+            onClick={() => playback.play(events)}
+            disabled={events.length === 0}
+          />
+        </div>
+      </div>
+
+      {revealed && (
+        <PentatonicBoard
+          pattern={pattern}
+          preferences={preferences}
+          playMidi={playMidi}
+          playback={playback}
+          events={events}
+          blueNote={null}
+        />
+      )}
+
+      {/* The same hint the scale step offers, showing the five notes the box is
+          cut out of: where else they sit, and how this box joins the next. */}
+      <details className="filter-panel full-neck-panel">
+        <summary>
+          <span>{tr('ws.pent.wholeNeck')}</span>
+          <span className="filter-summary">{tr('practice.neckHint')}</span>
+        </summary>
+        <div className="full-neck-panel__body">
+          <FullNeck
+            locations={locations}
+            preferences={preferences}
+            onPreferencesChange={onPreferencesChange}
+            playMidi={playMidi}
+            withHeading={false}
+          />
+        </div>
+      </details>
+    </div>
+  )
+}
+
 interface ChordsViewProps {
   harmony: InstrumentWorkspaceProps['harmony']
   preferences: GuitarPreferences
@@ -1089,11 +1419,33 @@ export function GuitarWorkspace({
     ),
     [activeNotes, patternOptions, preferences.config, shareState.direction, lang],
   )
+  const [blues, setBlues] = useState(false)
+  // Minor or major is the key's own question, answered on the circle: the tab
+  // follows whichever side the selected key sits on and never argues with it.
+  const pentatonic = useMemo(
+    () => buildPentatonic(shareState.selection, defaultFlavor(shareState.selection), { blues }),
+    [blues, shareState.selection, lang],
+  )
+  const pentatonicLocations = useMemo(
+    () => locateScaleOnFretboard(preferences.config, pentatonic.notes),
+    [pentatonic, preferences.config, lang],
+  )
+  const pentatonicPatterns = useMemo(
+    () =>
+      generatePentatonicBoxPatterns(
+        preferences.config,
+        pentatonic.coreNotes,
+        blues && pentatonic.blueNote ? [pentatonic.blueNote] : [],
+      ),
+    [blues, pentatonic, preferences.config, lang],
+  )
   const playMidi = (midi: number) => synth.playMidi(midi, preferences.volume)
   const playEvents = (events: PlayableEvent[]) =>
     synth.playEvents(events, preferences.tempo, preferences.volume)
-  const playScale = () =>
-    playEvents(scalePlaybackEvents(activeNotes, shareState.direction))
+  const playScale = (direction: ScaleDirection) =>
+    playEvents(scalePlaybackEvents(activeNotes, direction))
+  // The two played steps run their own view instead of a tab.
+  const isPlayedStep = practice?.step === 'scale' || practice?.step === 'pentatonic'
 
   return (
     <>
@@ -1104,6 +1456,19 @@ export function GuitarWorkspace({
           <span>{hasCagedTopology(preferences.config) ? tr('ws.cagedAvailable') : tr('ws.cagedUnavailable')}</span>
           {!synth.supported && <span>{tr('ws.audioUnsupported')}</span>}
         </div>
+      )}
+
+      {practice?.step === 'pentatonic' && (
+        <PracticePentatonicView
+          patterns={pentatonicPatterns}
+          locations={pentatonicLocations}
+          preferences={preferences}
+          onPreferencesChange={setPreferences}
+          pick={practice.pentatonicPick}
+          revealed={practice.revealed}
+          playMidi={playMidi}
+          playEvents={playEvents}
+        />
       )}
 
       {practice?.step === 'scale' && (
@@ -1119,30 +1484,40 @@ export function GuitarWorkspace({
         />
       )}
 
-      {practice?.step !== 'scale' && section === 'notes' && (
+      {!isPlayedStep && section === 'notes' && (
         <NotesView
           activeNotes={activeNotes}
           locations={locations}
           preferences={preferences}
           onPreferencesChange={setPreferences}
-          direction={shareState.direction}
           playMidi={playMidi}
           playScale={playScale}
           showFullNeck={practice === undefined}
         />
       )}
-      {practice?.step !== 'scale' && section === 'scales' && (
+      {!isPlayedStep && section === 'scales' && (
         <ScalesView
           patterns={patterns}
           preferences={preferences}
           onPreferencesChange={setPreferences}
-          direction={shareState.direction}
           playMidi={playMidi}
           playEvents={playEvents}
           tonicSymbol={activeNotes[0]?.symbol ?? ''}
         />
       )}
-      {practice?.step !== 'scale' && section === 'chords' && (
+      {!isPlayedStep && section === 'pentatonic' && (
+        <PentatonicView
+          pentatonic={pentatonic}
+          patterns={pentatonicPatterns}
+          preferences={preferences}
+          onPreferencesChange={setPreferences}
+          blues={blues}
+          onBluesChange={setBlues}
+          playMidi={playMidi}
+          playEvents={playEvents}
+        />
+      )}
+      {!isPlayedStep && section === 'chords' && (
         <ChordsView
           harmony={harmony}
           preferences={preferences}

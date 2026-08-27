@@ -202,7 +202,12 @@ function stepWord(step: number): string {
   return en ? `${step} st` : `${step} пт.`
 }
 
-function formulaFor(intervals: number[]): string {
+/**
+ * Semitone steps between neighbours, wrapped back to the tonic — "tone · tone ·
+ * semitone …". Exported because the pentatonic is built by dropping degrees
+ * from a scale this module already spelled, and it needs the same formula line.
+ */
+export function scaleFormula(intervals: number[]): string {
   return intervals
     .slice(1)
     .map((interval, index) => interval - (intervals[index] ?? 0))
@@ -229,7 +234,7 @@ export function buildScale(
     tonic: getTonicNote(selection),
     ascending: spellScale(selection, ascendingIntervals),
     descending: spellScale(selection, descendingIntervals),
-    formula: formulaFor(ascendingIntervals),
+    formula: scaleFormula(ascendingIntervals),
   }
 }
 
@@ -427,6 +432,18 @@ const CHROMATIC_SPELLINGS: Record<number, TonicSpec[]> = {
 export function chromaticNotes(pitchClass: number): SpelledNote[] {
   const specs = CHROMATIC_SPELLINGS[mod(pitchClass)] ?? []
   return specs.map((spec) => toSpelledNote(spec, mod(pitchClass)))
+}
+
+/**
+ * The same letter with the accidental moved by `delta`. Chromatic notes that
+ * belong to a scale keep their letter — the blues ♭5 is a lowered fifth, not
+ * the enharmonic sharp fourth — so altering beats re-spelling by pitch class.
+ */
+export function alterNote(note: SpelledNote, delta: number): SpelledNote {
+  return toSpelledNote(
+    { letter: note.letter, accidental: note.accidental + delta },
+    mod(note.pitchClass + delta),
+  )
 }
 
 /**

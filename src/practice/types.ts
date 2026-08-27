@@ -1,6 +1,6 @@
 import type { KeySelection } from '../music/types'
 
-export type PracticeStepId = 'notes' | 'scale' | 'chord'
+export type PracticeStepId = 'notes' | 'scale' | 'pentatonic' | 'chord'
 
 /** The four triad qualities diatonic harmony can produce. */
 export type TriadQuality = 'major' | 'minor' | 'diminished' | 'augmented'
@@ -36,10 +36,14 @@ export interface PracticeState {
   chordDegree: number
   /** Picks the fingering the scale step assigns; the instrument resolves it. */
   patternPick: number
+  /** Picks the box the pentatonic step assigns, drawn apart from the shape. */
+  pentatonicPick: number
   steps: readonly PracticeStepId[]
   stepIndex: number
-  /** The outcome of the step being reviewed; null while answering. */
-  outcome: StepOutcome | null
+  /** The furthest step this round has opened — how far back and forth one may walk. */
+  reachedIndex: number
+  /** Outcome of every step of the round, in step order; null until graded. */
+  outcomes: readonly (StepOutcome | null)[]
   tally: PracticeTally
 }
 
@@ -52,3 +56,5 @@ export type PracticeAction =
   | { type: 'reveal' }
   | { type: 'answer'; outcome: StepOutcome }
   | { type: 'next' }
+  /** Walks back to a step of this round that has already been graded. */
+  | { type: 'goToStep'; stepIndex: number }
