@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CircleOfFifths } from './components/CircleOfFifths'
 import { getInstrument, listInstruments } from './instruments/registry'
 import { getInstrumentUi, type PracticeDelegate } from './instruments/uiRegistry'
@@ -113,6 +113,16 @@ export default function App() {
   const workspaceShareState = practiceActive
     ? { ...shareState, selection, direction }
     : shareState
+
+  // Every key and every tab is its own shareable URL, so the tab title says
+  // which one it is — in a browser history, in a bookmark and in search.
+  useEffect(() => {
+    document.title = practiceActive
+      ? `${tr('practice.toggle')} · musicamustdie`
+      : `${keyDisplayName(selection)} · ${tr(`tabs.${shareState.section}`)} · musicamustdie`
+    // `lang` is a dependency in fact if not in form: `tr` keeps its identity
+    // across a language switch, the strings behind it do not.
+  }, [practiceActive, selection, shareState.section, tr, lang])
 
   const startPractice = () =>
     setShareState((state) => ({ ...state, practice: true, direction: 'ascending', section: 'notes' }))

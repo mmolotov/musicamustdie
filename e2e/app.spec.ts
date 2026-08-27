@@ -144,6 +144,19 @@ test('пояснение к виду минора меняется вместе 
   await expect(page.locator('.variant-hint')).toHaveCount(0)
 })
 
+test('заголовок вкладки называет тональность, раздел и режим', async ({ page }) => {
+  // Каждая тональность и каждый раздел — своя ссылка, и в истории, закладках и
+  // выдаче она должна называть себя, а не «musicamustdie» двадцать раз подряд.
+  await page.goto('/?tonic=9&mode=minor&section=pentatonic')
+  await expect(page).toHaveTitle('A · Ля минор · Пентатоника · musicamustdie')
+
+  await page.getByRole('button', { name: /Аккорды/ }).click()
+  await expect(page).toHaveTitle('A · Ля минор · Аккорды · musicamustdie')
+
+  await page.getByRole('button', { name: 'Тренировка', exact: true }).click()
+  await expect(page).toHaveTitle('Тренировка · musicamustdie')
+})
+
 test('мобильная версия не создаёт горизонтальную прокрутку страницы', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
