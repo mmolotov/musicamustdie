@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
 })
 
-test('полный раунд: барабан, ноты, гамма и аккорд', async ({ page }) => {
+test('полный раунд: барабан, ноты, гамма, пентатоника и аккорд', async ({ page }) => {
   await page.goto('/?practice=1&seed=101')
 
   await expect(page.getByRole('heading', { name: 'Тональность не выбрана' })).toBeVisible()
@@ -60,7 +60,20 @@ test('полный раунд: барабан, ноты, гамма и акко�
   await expect(page.locator('.practice-assignment .tab-card')).toBeVisible()
   await page.getByRole('button', { name: 'Получилось', exact: true }).click()
 
-  // Шаг 3 — аккорд на VI ступени ми минора, то есть до мажор.
+  // Шаг 3 — пентатоника: ступени видны сразу, две из них погашены.
+  await expect(page.getByText('Сыграйте этот бокс пентатоники: E · Ми минорная пентатоника')).toBeVisible()
+  await expect(page.locator('.practice-pentatonic .note-card')).toHaveCount(7)
+  await expect(page.locator('.practice-pentatonic .note-card.is-dropped strong')).toHaveText(['F♯', 'C'])
+  await expect(page.getByText('Погашены F♯, C')).toBeVisible()
+  await expect(page.locator('.practice-assignment h4')).toContainText('Бокс')
+  // Гриф закрыт, пока не сыграно, — как и на шаге гаммы.
+  await expect(page.locator('.practice-assignment > .fretboard-scroll')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Сыграл — показать' }).click()
+  await expect(page.locator('.practice-assignment > .fretboard-scroll')).toBeVisible()
+  await expect(page.locator('.practice-assignment .tab-card')).toBeVisible()
+  await page.getByRole('button', { name: 'Получилось', exact: true }).click()
+
+  // Шаг 4 — аккорд на VI ступени ми минора, то есть до мажор.
   await expect(page.getByText('Какое трезвучие на VI ступени: E · Ми натуральный минор?')).toBeVisible()
   await page.getByRole('button', { name: 'До', exact: true }).click()
   await page.getByRole('button', { name: 'Мажорное' }).click()
@@ -69,11 +82,11 @@ test('полный раунд: барабан, ноты, гамма и акко�
   // Разбор не нужен — ниже раскрывается обычный вид аккордов на той же ступени.
   await expect(page.locator('.practice-answer')).toHaveCount(0)
   await expect(page.locator('.selected-chord-summary__symbol')).toHaveText('C')
-  await expect(page.locator('.practice-tally dd').first()).toHaveText('3')
+  await expect(page.locator('.practice-tally dd').first()).toHaveText('4')
 
   // Последний шаг сразу запускает следующую тональность, и подсказки снова гаснут.
   await page.getByRole('button', { name: 'Следующая тональность' }).click()
-  await expect(page.getByRole('heading', { name: 'B♭ · Си♭ минор' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'C♯ · До♯ минор' })).toBeVisible()
   await expect(page.getByText('Раунд 2')).toBeVisible()
   await expect(page.locator('.key-signature-badge')).toContainText('скрыто')
 
@@ -96,6 +109,11 @@ test('пропуск подсказки и разбор ошибки в акко
   await page.getByRole('button', { name: 'Дальше' }).click()
   await page.getByRole('button', { name: 'Сыграл — показать' }).click()
   await page.getByRole('button', { name: 'Не получилось' }).click()
+
+  // Пентатоника си-бемоль минора: те же бемоли, без II и VI ступеней.
+  await expect(page.locator('.practice-pentatonic .note-card.is-dropped strong')).toHaveText(['C', 'G♭'])
+  await page.getByRole('button', { name: 'Сыграл — показать' }).click()
+  await page.getByRole('button', { name: 'Получилось', exact: true }).click()
 
   // Аккорд I ступени — си-бемоль минор; отвечаем неверно и смотрим разбор.
   await expect(page.getByText('Какое трезвучие на I ступени: B♭ · Си♭ натуральный минор?')).toBeVisible()
@@ -123,6 +141,12 @@ test('тренировка работает и на басу: своя библ�
   // У баса четыре струны — гриф и таб должны быть его собственными.
   await expect(page.locator('.practice-assignment > .fretboard-scroll .fretboard__string')).toHaveCount(4)
   await expect(page.locator('.practice-assignment .tab-grid__label')).toHaveCount(4)
+
+  // Боксы пентатоники строятся и на четырёх струнах.
+  await page.getByRole('button', { name: 'Получилось', exact: true }).click()
+  await expect(page.locator('.practice-assignment h4')).toContainText('Бокс')
+  await page.getByRole('button', { name: 'Сыграл — показать' }).click()
+  await expect(page.locator('.practice-assignment > .fretboard-scroll .fretboard__string')).toHaveCount(4)
 })
 
 test('переход между тональностями: клик по кругу и повтор', async ({ page }) => {
@@ -142,6 +166,8 @@ test('переход между тональностями: клик по кру
   // Проходим раунд насквозь и повторяем ту же тональность.
   await page.getByRole('button', { name: 'Не помню — показать' }).click()
   await page.getByRole('button', { name: 'Дальше' }).click()
+  await page.getByRole('button', { name: 'Сыграл — показать' }).click()
+  await page.getByRole('button', { name: 'Не получилось' }).click()
   await page.getByRole('button', { name: 'Сыграл — показать' }).click()
   await page.getByRole('button', { name: 'Не получилось' }).click()
   await page.getByRole('button', { name: 'Не помню — показать' }).click()

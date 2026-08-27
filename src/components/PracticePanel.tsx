@@ -1,5 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { chromaticNotes, DEGREE_LABELS, scaleDisplayName } from '../music/theory'
+import {
+  buildPentatonic,
+  pentatonicDisplayName,
+  type PentatonicScale,
+} from '../music/pentatonic'
 import type { BuiltScale, ChordDefinition, HarmonizedDegree, ScaleNote } from '../music/types'
 import { currentStep, isSelfChecked } from '../practice/machine'
 import {
@@ -113,6 +118,45 @@ function NoteAnswerRow({ slots, notes }: { slots: NoteSlots; notes: ScaleNote[] 
   )
 }
 
+/**
+ * The key's seven degrees with the two the pentatonic drops greyed out. It is
+ * shown before the shape rather than after it: the step asks for the box, not
+ * for the notes, so the notes are context and not an answer to withhold.
+ */
+function PentatonicDegrees({ pentatonic }: { pentatonic: PentatonicScale }) {
+  const tr = useT()
+  const dropped = new Set(pentatonic.omitted.map((note) => note.degree))
+
+  return (
+    <div className="practice-pentatonic">
+      <p className="practice-note">{tr('practice.pentatonic.kept')}</p>
+      <div className="note-strip note-strip--pentatonic">
+        {pentatonic.parent.ascending.map((note) => (
+          <div
+            className={[
+              'note-card',
+              note.degree === 1 ? 'is-root' : '',
+              dropped.has(note.degree) ? 'is-dropped' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            key={note.degreeLabel}
+          >
+            <span className="note-card__degree">{note.degreeLabel}</span>
+            <strong>{note.symbol}</strong>
+            <span>{note.solfege}</span>
+          </div>
+        ))}
+      </div>
+      <p className="practice-note">
+        {tr('practice.pentatonic.dropped', {
+          notes: pentatonic.omitted.map((note) => note.symbol).join(', '),
+        })}
+      </p>
+    </div>
+  )
+}
+
 function ChordQuestion({
   root,
   quality,
@@ -219,6 +263,9 @@ export function PracticePanel({
   const step = currentStep(state)
   const { selection } = state
   const notes = scale.ascending
+  // Built from the key rather than the drilled scale: the pentatonic ignores
+  // the harmonic and melodic alterations, and it drills the key's own flavour.
+  const pentatonic = buildPentatonic(scale.selection)
   const chord = harmony[state.chordDegree - 1]?.triad
   const isLastStep = state.stepIndex === state.steps.length - 1
 
@@ -330,6 +377,7 @@ export function PracticePanel({
           <p className="practice-task">
             {tr(`practice.task.${step}`, {
               key: scaleDisplayName(scale),
+              pentatonic: pentatonicDisplayName(pentatonic),
               degree: DEGREE_LABELS[state.chordDegree - 1] ?? state.chordDegree,
             })}
           </p>
@@ -362,11 +410,14 @@ export function PracticePanel({
                   onQualityChange={setChordQuality}
                 />
               )}
-              {/* The fretboard step is played, not answered: the instrument
+              {/* The fretboard steps are played, not answered: the instrument
                   shows the assignment and the player reports back. */}
-              {step === 'scale' && children}
+              {step === 'pentatonic' && (
+                <PentatonicDegrees pentatonic={pentatonic} />
+              )}
+              {isSelfChecked(step) && children}
               <div className="practice-actions">
-                {step === 'scale' ? (
+                {isSelfChecked(step) ? (
                   <button type="button" className="primary-button" onClick={onReveal}>
                     {tr('practice.played')}
                   </button>
@@ -408,6 +459,7 @@ export function PracticePanel({
               {step === 'chord' && chord && state.outcome !== 'correct' && (
                 <ChordAnswer chord={chord} />
               )}
+              {step === 'pentatonic' && <PentatonicDegrees pentatonic={pentatonic} />}
               {children}
               <div className="practice-actions">
                 {isSelfChecked(step) && state.outcome === null ? (

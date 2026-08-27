@@ -532,6 +532,102 @@ export function generateCanonicalThreeNpsPatterns(
   })
 }
 
+/**
+ * The five pentatonic boxes. A box is two notes per string on consecutive
+ * degrees, so the shape falls out of the scale itself instead of a stored fret
+ * grid: box N starts on degree N of the five, and every fret is computed from
+ * the actual tuning — the B-string offset, a seven-string neck and a four-string
+ * bass all land where they should.
+ *
+ * `extras` are notes shown inside the box without belonging to the shape: the
+ * blues ♭5 sits between two box notes rather than replacing one of them.
+ */
+export function generatePentatonicBoxPatterns(
+  config: GuitarConfig,
+  notes: ScaleNote[],
+  extras: ScaleNote[] = [],
+): PerformancePattern<FretLocation>[] {
+  if (notes.length !== 5 || config.strings.length < 4) return []
+  const boxLocations = locateScaleOnFretboard(config, notes)
+  const locationByPosition = new Map(
+    boxLocations.map((location) => [`${location.stringIndex}:${location.fret}`, location]),
+  )
+  const extraLocations = extras.length > 0 ? locateScaleOnFretboard(config, extras) : []
+  const bluesNotes = [...notes, ...extras].sort((a, b) => a.interval - b.interval)
+  const lowString = config.strings[0] ?? 40
+
+  return notes.flatMap((degreeNote, boxIndex) => {
+    const firstAnchorFret = firstFretForPitch(lowString, degreeNote.pitchClass)
+    const anchorFrets: number[] = []
+    for (let anchorFret = firstAnchorFret; anchorFret <= config.frets; anchorFret += 12) {
+      anchorFrets.push(anchorFret)
+    }
+
+    const candidate = anchorFrets.flatMap((anchorFret) => {
+      const startMidi = lowString + anchorFret
+      const locations: FretLocation[] = []
+      for (let stringIndex = 0; stringIndex < config.strings.length; stringIndex += 1) {
+        const openMidi = config.strings[stringIndex]
+        if (openMidi === undefined) return []
+        for (let noteOnString = 0; noteOnString < 2; noteOnString += 1) {
+          const step = stringIndex * 2 + noteOnString
+          const offset = scaleOffsetFromDegree(notes, boxIndex, step)
+          if (offset === null) return []
+          const fret = startMidi + offset - openMidi
+          const location = locationByPosition.get(`${stringIndex}:${fret}`)
+          if (!location || fret < 0 || fret > config.frets) return []
+          locations.push(location)
+        }
+      }
+      const frets = locations.map((location) => location.fret)
+      const startFret = Math.min(...frets)
+      const endFret = Math.max(...frets)
+      const blueInside = extraLocations.filter(
+        (location) => location.fret >= startFret && location.fret <= endFret,
+      )
+      const shown = [...locations, ...blueInside]
+      // Run the blues scale when the box actually holds the ♭5 across the whole
+      // path, and fall back to the plain pentatonic when it does not.
+      const bluesPath = extras.length > 0 ? findTonicToTonicPath(shown, bluesNotes) : []
+      const tonicPath =
+        bluesPath.length >= bluesNotes.length + 1
+          ? bluesPath
+          : findTonicToTonicPath(locations, notes)
+      // A box that holds two tonics is run from tonic to tonic; one that does
+      // not — every box on a four-string bass, and the outer ones on a guitar —
+      // is run corner to corner, the way a player drills the shape itself.
+      const path =
+        tonicPath.length >= notes.length + 1
+          ? tonicPath
+          : [...shown].sort((a, b) => a.stringIndex - b.stringIndex || a.fret - b.fret)
+      return [{ locations: shown, tonicPath: path, startFret, endFret }]
+    })[0]
+    if (!candidate) return []
+
+    const boxNumber = boxIndex + 1
+    return [{
+      id: `pentatonic-box-${boxNumber}-${candidate.startFret}`,
+      name: pick(`Бокс ${boxNumber} · ${degreeNote.symbol}`, `Box ${boxNumber} · ${degreeNote.symbol}`),
+      description: pick(
+        'Две ноты на струну, от ступени бокса',
+        'Two notes per string, starting on the box degree',
+      ),
+      system: 'pentatonic',
+      locations: candidate.locations,
+      ascending: eventsFromPath(candidate.tonicPath),
+      descending: eventsFromPath([...candidate.tonicPath].reverse()),
+      startPosition: candidate.startFret,
+      endPosition: candidate.endFret,
+      origin: 'canonical',
+      tags: [
+        pick('Пентатоника', 'Pentatonic'),
+        pick('2 ноты/струна', '2 notes/string'),
+        ...(extras.length > 0 ? [pick('Блюзовая нота', 'Blue note')] : []),
+      ],
+    }]
+  })
+}
+
 export function generateCagedPatterns(
   config: GuitarConfig,
   notes: ScaleNote[],

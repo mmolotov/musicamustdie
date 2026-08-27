@@ -46,8 +46,14 @@ describe('машина состояний тренировки', () => {
     expect(currentStep(scale)).toBe('scale')
     expect(scale.outcome).toBeNull()
 
-    const chord = practiceReducer(
+    const pentatonic = practiceReducer(
       practiceReducer(scale, { type: 'answer', outcome: 'skipped' }),
+      { type: 'next' },
+    )
+    expect(currentStep(pentatonic)).toBe('pentatonic')
+
+    const chord = practiceReducer(
+      practiceReducer(pentatonic, { type: 'answer', outcome: 'correct' }),
       { type: 'next' },
     )
     expect(currentStep(chord)).toBe('chord')
@@ -58,7 +64,7 @@ describe('машина состояний тренировки', () => {
     )
     expect(done.phase).toBe('idle')
     expect(done.stepIndex).toBe(0)
-    expect(done.tally).toEqual({ correct: 1, wrong: 1, skipped: 1 })
+    expect(done.tally).toEqual({ correct: 2, wrong: 1, skipped: 1 })
     // Тональность остаётся выбранной, чтобы круг не гас между раундами.
     expect(done.selection).toEqual(first.selection)
   })

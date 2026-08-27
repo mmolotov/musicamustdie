@@ -22,6 +22,12 @@ interface FretboardProps {
   viewport?: FretboardViewport
   showFingerings?: boolean
   showShifts?: boolean
+  /**
+   * Pitch classes that belong to the shape without belonging to the scale —
+   * the blues ♭5. They get their own colour and keep their own degree name,
+   * because "5" would be a lie about a lowered fifth.
+   */
+  accentPitchClasses?: readonly number[]
 }
 
 const MARKER_FRETS = new Set([3, 5, 7, 9, 12, 15, 17, 19, 21, 24])
@@ -37,6 +43,7 @@ export function Fretboard({
   routeLocationIds,
   routeEvents = [],
   viewport,
+  accentPitchClasses,
   showFingerings = false,
   showShifts = false,
 }: FretboardProps) {
@@ -201,8 +208,14 @@ export function Fretboard({
         {visibleLocations.map((location) => {
           const routeEvent = routeEventByLocation.get(location.id)
           const finger = routeEvent?.finger ?? location.finger
-          const label = labelMode === 'degrees' ? String(location.degree) : location.note.symbol
-          const root = location.degree === 1
+          const accent = accentPitchClasses?.includes(location.pitchClass) ?? false
+          const label =
+            labelMode === 'degrees'
+              ? accent
+                ? location.note.degreeLabel
+                : String(location.degree)
+              : location.note.symbol
+          const root = location.degree === 1 && !accent
           const isPlaying = resolvedActiveLocationId === location.id
           const isOnRoute = routeLocationIds?.includes(location.id) ?? false
           const isContext = routeLocationIds !== undefined && !isOnRoute
@@ -224,7 +237,7 @@ export function Fretboard({
                 fret: location.fret,
                 finger: finger ? tr('fretboard.fingerSuffix', { n: finger }) : '',
               })}
-              className={`fret-note${root ? ' is-root' : ''}${isPlaying ? ' is-playing' : ''}${isContext ? ' is-context' : ''}${isOnRoute ? ' is-route' : ''}${hasShift ? ' has-shift' : ''}`}
+              className={`fret-note${root ? ' is-root' : ''}${accent ? ' is-accent' : ''}${isPlaying ? ' is-playing' : ''}${isContext ? ' is-context' : ''}${isOnRoute ? ' is-route' : ''}${hasShift ? ' has-shift' : ''}`}
               onClick={() => onPlayNote(location.midi)}
               onKeyDown={(event) => handleMarkerKey(event, location.midi)}
             >

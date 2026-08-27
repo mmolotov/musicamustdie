@@ -2,10 +2,16 @@ import { drawKey } from './keys'
 import { nextInt, nextRandom } from './rng'
 import type { PracticeAction, PracticeState, PracticeStepId, PracticeTally, StepOutcome } from './types'
 
-export const PRACTICE_STEPS: readonly PracticeStepId[] = ['notes', 'scale', 'chord']
+// The two fretboard steps sit next to each other on purpose: the round works
+// through the neck in one go instead of being split by the harmony question.
+export const PRACTICE_STEPS: readonly PracticeStepId[] = ['notes', 'scale', 'pentatonic', 'chord']
 
-/** Steps the player grades themselves — the app cannot hear the guitar. */
-export const SELF_CHECKED_STEPS: readonly PracticeStepId[] = ['scale']
+/**
+ * Steps the player performs rather than answers: the assignment is the
+ * question, so the workspace shows it up front, and the grade comes from the
+ * player — the app cannot hear the guitar.
+ */
+export const SELF_CHECKED_STEPS: readonly PracticeStepId[] = ['scale', 'pentatonic']
 
 export function isSelfChecked(step: PracticeStepId | null): boolean {
   return step !== null && SELF_CHECKED_STEPS.includes(step)
@@ -26,6 +32,7 @@ export function initialPracticeState(seed: number): PracticeState {
     needleAngle: 0,
     chordDegree: 1,
     patternPick: 0,
+    pentatonicPick: 0,
     steps: PRACTICE_STEPS,
     stepIndex: 0,
     outcome: null,
@@ -48,17 +55,24 @@ interface RoundAssignment {
   seed: number
   chordDegree: number
   patternPick: number
+  pentatonicPick: number
 }
 
 /**
- * The rest of a round: which degree the chord step asks about and which shape
- * the fretboard step assigns. Drawn together with the key so the whole round
- * replays from one seed.
+ * The rest of a round: which degree the chord step asks about, which shape the
+ * scale step assigns and which box the pentatonic step assigns. Drawn together
+ * with the key so the whole round replays from one seed.
  */
 function drawAssignment(seed: number): RoundAssignment {
   const degree = nextInt(seed, 7)
   const pattern = nextRandom(degree.seed)
-  return { seed: pattern.seed, chordDegree: degree.value + 1, patternPick: pattern.value }
+  const box = nextRandom(pattern.seed)
+  return {
+    seed: box.seed,
+    chordDegree: degree.value + 1,
+    patternPick: pattern.value,
+    pentatonicPick: box.value,
+  }
 }
 
 function bumpTally(tally: PracticeTally, outcome: StepOutcome): PracticeTally {
@@ -79,6 +93,7 @@ export function practiceReducer(state: PracticeState, action: PracticeAction): P
         needleAngle: nextNeedleAngle(state.needleAngle, key.key.sectorIndex),
         chordDegree: assignment.chordDegree,
         patternPick: assignment.patternPick,
+        pentatonicPick: assignment.pentatonicPick,
         stepIndex: 0,
         outcome: null,
       }
@@ -96,6 +111,7 @@ export function practiceReducer(state: PracticeState, action: PracticeAction): P
         needleAngle: nextNeedleAngle(state.needleAngle, action.sectorIndex, 0),
         chordDegree: assignment.chordDegree,
         patternPick: assignment.patternPick,
+        pentatonicPick: assignment.pentatonicPick,
         round: state.round + 1,
         stepIndex: 0,
         outcome: null,

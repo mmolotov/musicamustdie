@@ -59,6 +59,7 @@ export type GuitarScaleFamily =
   | 'one-octave'
   | 'two-octave'
   | 'extended'
+  | 'pentatonic'
 export type PatternSystem = GuitarScaleFamily | 'full-range' | string
 export type PatternOrigin = 'canonical' | 'curated' | 'generated'
 
