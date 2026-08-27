@@ -1143,7 +1143,10 @@ function PentatonicView({
 
 interface PracticePentatonicViewProps {
   patterns: PerformancePattern<FretLocation>[]
+  /** Every note of the pentatonic across the whole neck, behind the disclosure. */
+  locations: FretLocation[]
   preferences: GuitarPreferences
+  onPreferencesChange: (preferences: GuitarPreferences) => void
   pick: number
   revealed: boolean
   playMidi: (midi: number) => void
@@ -1157,7 +1160,9 @@ interface PracticePentatonicViewProps {
  */
 function PracticePentatonicView({
   patterns,
+  locations,
   preferences,
+  onPreferencesChange,
   pick,
   revealed,
   playMidi,
@@ -1205,6 +1210,24 @@ function PracticePentatonicView({
           blueNote={null}
         />
       )}
+
+      {/* The same hint the scale step offers, showing the five notes the box is
+          cut out of: where else they sit, and how this box joins the next. */}
+      <details className="filter-panel full-neck-panel">
+        <summary>
+          <span>{tr('ws.pent.wholeNeck')}</span>
+          <span className="filter-summary">{tr('practice.neckHint')}</span>
+        </summary>
+        <div className="full-neck-panel__body">
+          <FullNeck
+            locations={locations}
+            preferences={preferences}
+            onPreferencesChange={onPreferencesChange}
+            playMidi={playMidi}
+            withHeading={false}
+          />
+        </div>
+      </details>
     </div>
   )
 }
@@ -1403,6 +1426,10 @@ export function GuitarWorkspace({
     () => buildPentatonic(shareState.selection, defaultFlavor(shareState.selection), { blues }),
     [blues, shareState.selection, lang],
   )
+  const pentatonicLocations = useMemo(
+    () => locateScaleOnFretboard(preferences.config, pentatonic.notes),
+    [pentatonic, preferences.config, lang],
+  )
   const pentatonicPatterns = useMemo(
     () =>
       generatePentatonicBoxPatterns(
@@ -1434,7 +1461,9 @@ export function GuitarWorkspace({
       {practice?.step === 'pentatonic' && (
         <PracticePentatonicView
           patterns={pentatonicPatterns}
+          locations={pentatonicLocations}
           preferences={preferences}
+          onPreferencesChange={setPreferences}
           pick={practice.pentatonicPick}
           revealed={practice.revealed}
           playMidi={playMidi}

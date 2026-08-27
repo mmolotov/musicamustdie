@@ -67,6 +67,13 @@ test('полный раунд: барабан, ноты, гамма, пента�
   await expect(page.locator('.practice-assignment h4')).toContainText('Бокс')
   // Гриф закрыт, пока не сыграно, — как и на шаге гаммы.
   await expect(page.locator('.practice-assignment > .fretboard-scroll')).toHaveCount(0)
+  // Но пентатоника на всём грифе доступна по клику, как гамма на своём шаге.
+  await expect(page.locator('.full-neck-panel .fretboard-scroll')).toBeHidden()
+  await page.getByText('Пентатоника на всём грифе', { exact: true }).click()
+  await expect(page.locator('.full-neck-panel .fretboard-scroll')).toBeVisible()
+  // На грифе только пять нот пентатоники: F♯ и C сюда не попадают.
+  await expect(page.locator('.full-neck-panel [aria-label*="Фа диез"]')).toHaveCount(0)
+  await expect(page.locator('.full-neck-panel [aria-label*="Ми"]').first()).toBeVisible()
   await page.getByRole('button', { name: 'Сыграл — показать' }).click()
   await expect(page.locator('.practice-assignment > .fretboard-scroll')).toBeVisible()
   await expect(page.locator('.practice-assignment .tab-card')).toBeVisible()
