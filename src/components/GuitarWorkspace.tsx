@@ -325,10 +325,6 @@ function ScalesView({
 }: ScalesViewProps) {
   const tr = useT()
   const [requestedFamily, setRequestedFamily] = useState<PatternFamilyChoice>('recommended')
-  // Which way the tab reads follows the last button pressed here, and nothing
-  // outside this view: the ↑/↓ of the melodic minor decides which notes the key
-  // has, not which way the exercise runs.
-  const [routeDirection, setRouteDirection] = useState<ScaleDirection>('ascending')
   const [selectedPatternByFamily, setSelectedPatternByFamily] = useState<Record<string, string>>({})
   const [selectedRouteByPattern, setSelectedRouteByPattern] = useState<Record<string, string>>({})
   const {
@@ -366,13 +362,10 @@ function ScalesView({
     : undefined
   const selectedRoute =
     availableRoutes.find((route) => route.id === selectedRouteId) ?? availableRoutes[0]
-  const eventsFor = (direction: ScaleDirection): PlayableEvent[] =>
-    selectedRoute ? (direction === 'ascending' ? selectedRoute.ascending : selectedRoute.descending) : []
-  const selectedEvents = eventsFor(routeDirection)
-  const playRoute = (direction: ScaleDirection) => {
-    setRouteDirection(direction)
-    playback.play(eventsFor(direction))
-  }
+  // The library is a library of shapes, and a shape is learnt upwards: the
+  // descending run belongs to the notes tab, where the melodic minor actually
+  // changes on the way down.
+  const selectedEvents = selectedRoute?.ascending ?? []
   const routeLocationIds = selectedEvents.flatMap((event) =>
     event.locationId ? [event.locationId] : [],
   )
@@ -393,7 +386,7 @@ function ScalesView({
   useEffect(() => {
     clearPlayback()
     return clearPlayback
-  }, [clearPlayback, routeDirection, selectedPattern?.id, selectedRoute?.id])
+  }, [clearPlayback, selectedPattern?.id, selectedRoute?.id])
 
   const comfortLabel = selectedPattern?.ergonomics
     ? selectedPattern.ergonomics.difficulty <= 1
@@ -500,18 +493,11 @@ function ScalesView({
                 </div>
               )}
             </div>
-            <div className="play-pair">
-              <AudioButton
-                label={tr('ws.playRouteUp')}
-                onClick={() => playRoute('ascending')}
-                disabled={eventsFor('ascending').length === 0}
-              />
-              <AudioButton
-                label={tr('ws.playRouteDown')}
-                onClick={() => playRoute('descending')}
-                disabled={eventsFor('descending').length === 0}
-              />
-            </div>
+            <AudioButton
+              label={tr('ws.playRoute')}
+              onClick={() => playback.play(selectedEvents)}
+              disabled={selectedEvents.length === 0}
+            />
           </div>
 
           <div className="scale-route-row">
@@ -585,7 +571,7 @@ function ScalesView({
             config={preferences.config}
             locations={selectedPattern.locations}
             events={selectedEvents}
-            direction={routeDirection}
+            direction="ascending"
             activeStepIndex={playback.activeStepIndex}
             showFingerings={showScaleFingerings}
             showShifts={showScaleShifts}

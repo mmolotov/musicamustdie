@@ -54,7 +54,7 @@ test('переключает семейства, маршруты и аними�
   await page.getByRole('radio', { name: '2 октавы' }).click()
   await expect(page.getByText(/Маршрут: C → C → C/)).toBeVisible()
   await expect(page.locator('[data-tab-step]')).toHaveCount(15)
-  await page.getByRole('button', { name: 'Сыграть маршрут вверх' }).click()
+  await page.getByRole('button', { name: 'Сыграть', exact: true }).click()
   await expect(page.locator('.fret-note[data-playing="true"] .fret-note__marker')).toBeVisible()
   await expect(page.locator('.tab-grid__cell[data-playing="true"]')).toBeVisible()
 
@@ -207,7 +207,7 @@ test('мобильная версия: гриф гаммы прокручива�
   expect(tabOverflows).toBe(true)
   const beforeScroll = await tab.evaluate((el) => el.scrollLeft)
 
-  await page.getByRole('button', { name: 'Сыграть маршрут вверх' }).click()
+  await page.getByRole('button', { name: 'Сыграть', exact: true }).click()
   await expect
     .poll(async () => tab.evaluate((el) => el.scrollLeft), { timeout: 12000 })
     .toBeGreaterThan(beforeScroll + 8)
