@@ -1164,11 +1164,78 @@ div.note-card:hover {
   box-shadow: inset 0 0 0 1px rgba(50, 108, 93, 0.1);
 }
 
-.pattern-summary {
-  margin: 5px 0 14px;
-  padding: 14px 16px;
-  border-radius: 13px;
-  background: #f4f3ee;
+/* Family filter and shape list are one row: the filter narrows the list next
+   to it instead of standing above it as a second set of tabs. */
+.pattern-browser {
+  display: grid;
+  grid-template-columns: minmax(150px, auto) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.family-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.family-filter select {
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* What the chip already says, kept beside the play button. */
+.pattern-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 12px;
+}
+
+.pattern-line p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pattern-line strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.pattern-details {
+  padding: 4px 16px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.pattern-details p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.view-panel {
+  min-width: 220px;
+  margin: 0;
+}
+
+.view-panel .scale-view-toolbar {
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--line);
 }
 
 .pattern-tags {
@@ -2695,6 +2762,10 @@ footer {
     grid-template-columns: repeat(3, 1fr);
   }
 
+  .pattern-browser {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .pattern-picker {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2839,6 +2910,18 @@ footer {
   scroll-snap-align: start;
 }
 
+.family-filter select {
+  color: var(--ink);
+  background: #15191d;
+}
+
+.pattern-line {
+  padding: 12px 15px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #111519;
+}
+
 .pattern-summary__title {
   display: flex;
   flex-wrap: wrap;
@@ -2873,7 +2956,7 @@ footer {
 
 .scale-route-row {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
   margin: 18px 0 12px;

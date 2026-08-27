@@ -22,7 +22,7 @@ test('английский интерфейс переводит гаммы и �
   const page = await context.newPage()
   await page.goto('/?section=scales')
   await expect(page.getByRole('heading', { name: 'Fingering library' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: /Best/ })).toBeVisible()
+  await expect(page.getByLabel('Fingering family')).toHaveValue('recommended')
 
   await page.getByRole('button', { name: /Chords/ }).click()
   await expect(page.getByRole('heading', { name: 'Diatonic chords' })).toBeVisible()

@@ -412,30 +412,11 @@ function ScalesView({
 
   return (
     <section className="workspace-section" aria-labelledby="scales-heading">
-      <div className="section-heading section-heading--wrap">
+      <div className="section-heading">
         <div>
           <span className="eyebrow">{tr('ws.scaleFingerings')}</span>
           <h3 id="scales-heading">{tr('ws.fingeringLibrary')}</h3>
         </div>
-        <span className="practice-profile-badge">{tr('ws.profileBadge', { profile: profileLabel })}</span>
-      </div>
-
-      <div className="scale-family-tabs" role="tablist" aria-label={tr('ws.familyTabsAria')}>
-        {SCALE_FAMILY_IDS.map((familyId) => {
-          const count = patternGroupsByFamily.get(familyId)?.length ?? 0
-          return (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={effectiveFamily === familyId}
-              className={effectiveFamily === familyId ? 'is-active' : ''}
-              key={familyId}
-              onClick={() => setRequestedFamily(familyId)}
-            >
-              {familyLabel(familyId)}<small>{count}</small>
-            </button>
-          )
-        })}
       </div>
 
       {activePatterns.length === 0 || !selectedPattern ? (
@@ -445,7 +426,23 @@ function ScalesView({
         </div>
       ) : (
         <>
-          <div className="pattern-picker" role="list" aria-label={tr('ws.positionsAria')}>
+          {/* Family and shape were two rows of the same choice, with the family
+              repeated again on every chip. It is a filter over one list now. */}
+          <div className="pattern-browser">
+            <label className="family-filter">
+              <span>{tr('ws.familyTabsAria')}</span>
+              <select
+                value={effectiveFamily}
+                onChange={(event) => setRequestedFamily(event.target.value as PatternFamilyChoice)}
+              >
+                {SCALE_FAMILY_IDS.map((familyId) => (
+                  <option key={familyId} value={familyId}>
+                    {familyLabel(familyId)} · {patternGroupsByFamily.get(familyId)?.length ?? 0}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="pattern-picker" role="list" aria-label={tr('ws.positionsAria')}>
             {activePatterns.map((pattern) => (
               <button
                 type="button"
@@ -467,16 +464,35 @@ function ScalesView({
                 </span>
               </button>
             ))}
+            </div>
           </div>
 
-          <div className="pattern-summary">
-            <div>
-              <span className="eyebrow">{tr('ws.selectedFingering')}</span>
-              <div className="pattern-summary__title">
-                <h4>{selectedPattern.name}</h4>
-                <span className={`comfort-badge comfort-badge--${comfortTone}`}>{comfortLabel}</span>
-              </div>
+          {/* The chip above already carries the name, the frets and the family;
+              the line keeps them next to the play button and folds everything
+              that is genuinely extra out of the way. */}
+          <div className="pattern-line">
+            <p>
+              <strong>{selectedPattern.name}</strong>
+              {' · '}
+              {tr('ws.fretRange', { start: selectedPattern.startPosition, end: selectedPattern.endPosition })}
+              {' · '}
+              {familyLabel(selectedPattern.system)}
+            </p>
+            <AudioButton
+              label={tr('ws.playRoute')}
+              onClick={() => playback.play(selectedEvents)}
+              disabled={selectedEvents.length === 0}
+            />
+          </div>
+
+          <details className="filter-panel">
+            <summary>
+              <span>{tr('ws.shapeDetails')}</span>
+              <span className="filter-summary">{comfortLabel}</span>
+            </summary>
+            <div className="pattern-details">
               <p>{selectedPattern.description}</p>
+              <p className="pattern-equivalents">{tr('ws.profileBadge', { profile: profileLabel })}</p>
               {selectedGroup.aliasNames.length > 0 && (
                 <p className="pattern-equivalents">
                   {tr('ws.matchesOnBoard')} <strong>{selectedGroup.aliasNames.join(', ')}</strong>
@@ -485,6 +501,7 @@ function ScalesView({
               <p className="route-summary">{tr('ws.routeSummary')} <strong>{routeLabel}</strong></p>
               {selectedPattern.tags && selectedPattern.tags.length > 0 && (
                 <div className="pattern-tags" aria-label={tr('ws.patternTagsAria')}>
+                  <span className={`comfort-badge comfort-badge--${comfortTone}`}>{comfortLabel}</span>
                   {selectedPattern.tags.map((tag) => <span key={tag}>{tag}</span>)}
                   {selectedPattern.preferredVariant && <span>{tr('ws.bestStart')}</span>}
                   {selectedPattern.ergonomics && (
@@ -493,12 +510,7 @@ function ScalesView({
                 </div>
               )}
             </div>
-            <AudioButton
-              label={tr('ws.playRoute')}
-              onClick={() => playback.play(selectedEvents)}
-              disabled={selectedEvents.length === 0}
-            />
-          </div>
+          </details>
 
           <div className="scale-route-row">
             <div>
@@ -521,7 +533,11 @@ function ScalesView({
                 ))}
               </div>
             </div>
-            <div className="scale-view-toolbar">
+            <details className="filter-panel view-panel">
+              <summary>
+                <span>{tr('ws.viewOptions')}</span>
+              </summary>
+              <div className="scale-view-toolbar">
               <LabelModeToggle preferences={preferences} onChange={onPreferencesChange} />
               <button
                 type="button"
@@ -545,7 +561,8 @@ function ScalesView({
               >
                 {tr('ws.transitions')}
               </button>
-            </div>
+              </div>
+            </details>
           </div>
           <Fretboard
             config={preferences.config}
