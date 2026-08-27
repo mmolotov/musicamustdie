@@ -33,7 +33,8 @@ test('вкладка пентатоники: мажорная сторона б�
     .locator('.note-strip--pentatonic .note-card:not(.is-dropped) strong')
     .allTextContents()
 
-  await page.getByRole('button', { name: 'Мажорная' }).click()
+  // Мажор или минор выбирается самой тональностью на круге, а не внутри вкладки.
+  await page.getByRole('button', { name: 'C мажор', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'C · До мажорная пентатоника' })).toBeVisible()
   await expect(page.locator('.note-card.is-dropped strong')).toHaveText(['F', 'B'])
 

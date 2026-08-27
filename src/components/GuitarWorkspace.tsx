@@ -27,7 +27,6 @@ import {
   buildPentatonic,
   defaultFlavor,
   pentatonicDisplayName,
-  type PentatonicFlavor,
   type PentatonicScale,
 } from '../music/pentatonic'
 import { keyDisplayName } from '../music/theory'
@@ -1020,8 +1019,6 @@ interface PentatonicViewProps {
   patterns: PerformancePattern<FretLocation>[]
   preferences: GuitarPreferences
   onPreferencesChange: (preferences: GuitarPreferences) => void
-  flavor: PentatonicFlavor
-  onFlavorChange: (flavor: PentatonicFlavor) => void
   blues: boolean
   onBluesChange: (blues: boolean) => void
   playMidi: (midi: number) => void
@@ -1033,8 +1030,6 @@ function PentatonicView({
   patterns,
   preferences,
   onPreferencesChange,
-  flavor,
-  onFlavorChange,
   blues,
   onBluesChange,
   playMidi,
@@ -1061,22 +1056,6 @@ function PentatonicView({
           <h3 id="pentatonic-heading">{pentatonicDisplayName(pentatonic)}</h3>
         </div>
         <div className="pentatonic-controls">
-          <div className="segmented segmented--small" aria-label={tr('ws.pent.flavorAria')}>
-            <button
-              type="button"
-              className={flavor === 'minor' ? 'is-active' : ''}
-              onClick={() => onFlavorChange('minor')}
-            >
-              {tr('ws.pent.minor')}
-            </button>
-            <button
-              type="button"
-              className={flavor === 'major' ? 'is-active' : ''}
-              onClick={() => onFlavorChange('major')}
-            >
-              {tr('ws.pent.major')}
-            </button>
-          </div>
           <button
             type="button"
             className={blues ? 'view-toggle is-active' : 'view-toggle'}
@@ -1419,18 +1398,12 @@ export function GuitarWorkspace({
     ),
     [activeNotes, patternOptions, preferences.config, shareState.direction, lang],
   )
-  // The pentatonic tab keeps its own flavour, but only as an override: until
-  // the player picks a side, it follows whichever one the key is in.
-  const [flavorOverride, setFlavorOverride] = useState<PentatonicFlavor | null>(null)
   const [blues, setBlues] = useState(false)
-  // A round always drills the flavour the drawn key is in, so the practice
-  // step and the task line above it cannot disagree about which one it is.
-  const pentatonicFlavor = practice
-    ? defaultFlavor(shareState.selection)
-    : flavorOverride ?? defaultFlavor(shareState.selection)
+  // Minor or major is the key's own question, answered on the circle: the tab
+  // follows whichever side the selected key sits on and never argues with it.
   const pentatonic = useMemo(
-    () => buildPentatonic(shareState.selection, pentatonicFlavor, { blues }),
-    [blues, pentatonicFlavor, shareState.selection, lang],
+    () => buildPentatonic(shareState.selection, defaultFlavor(shareState.selection), { blues }),
+    [blues, shareState.selection, lang],
   )
   const pentatonicPatterns = useMemo(
     () =>
@@ -1513,8 +1486,6 @@ export function GuitarWorkspace({
           patterns={pentatonicPatterns}
           preferences={preferences}
           onPreferencesChange={setPreferences}
-          flavor={pentatonicFlavor}
-          onFlavorChange={setFlavorOverride}
           blues={blues}
           onBluesChange={setBlues}
           playMidi={playMidi}
