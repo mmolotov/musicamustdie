@@ -306,6 +306,12 @@ export default function App() {
                 </div>
               )}
 
+              {/* Four names that differ by one or two degrees: say which, so the
+                  row is a choice rather than a quiz. */}
+              {selection.mode === 'minor' && (
+                <p className="variant-hint">{tr(`minorVariant.${shareState.minorVariant}.hint`)}</p>
+              )}
+
               {!practiceActive &&
                 selection.mode === 'minor' &&
                 shareState.minorVariant === 'melodic-classical' && (

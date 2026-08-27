@@ -244,9 +244,8 @@ interface NotesViewProps {
   locations: FretLocation[]
   preferences: GuitarPreferences
   onPreferencesChange: (preferences: GuitarPreferences) => void
-  direction: ScaleDirection
   playMidi: (midi: number) => void
-  playScale: () => void
+  playScale: (direction: ScaleDirection) => void
   /** Practice moves the whole neck onto the fretboard step, behind a click. */
   showFullNeck?: boolean
 }
@@ -256,7 +255,6 @@ function NotesView({
   locations,
   preferences,
   onPreferencesChange,
-  direction,
   playMidi,
   playScale,
   showFullNeck = true,
@@ -271,10 +269,13 @@ function NotesView({
           <span className="eyebrow">{tr('ws.scaleContent')}</span>
           <h3 id="notes-heading">{tr('ws.sevenDegrees')}</h3>
         </div>
-        <AudioButton
-          label={direction === 'ascending' ? tr('ws.playUp') : tr('ws.playDown')}
-          onClick={playScale}
-        />
+        {/* Both directions are always on offer. Tying playback to the ↑/↓ of
+            the melodic minor left every other key stuck on whichever one was
+            picked there, with no control in sight to put it back. */}
+        <div className="play-pair">
+          <AudioButton label={tr('ws.playUp')} onClick={() => playScale('ascending')} />
+          <AudioButton label={tr('ws.playDown')} onClick={() => playScale('descending')} />
+        </div>
       </div>
 
       <div className="note-strip">
@@ -309,7 +310,6 @@ interface ScalesViewProps {
   patterns: PerformancePattern<FretLocation>[]
   preferences: GuitarPreferences
   onPreferencesChange: (preferences: GuitarPreferences) => void
-  direction: ScaleDirection
   playMidi: (midi: number) => void
   playEvents: (events: PlayableEvent[]) => void
   tonicSymbol: string
@@ -319,13 +319,16 @@ function ScalesView({
   patterns,
   preferences,
   onPreferencesChange,
-  direction,
   playMidi,
   playEvents,
   tonicSymbol,
 }: ScalesViewProps) {
   const tr = useT()
   const [requestedFamily, setRequestedFamily] = useState<PatternFamilyChoice>('recommended')
+  // Which way the tab reads follows the last button pressed here, and nothing
+  // outside this view: the ↑/↓ of the melodic minor decides which notes the key
+  // has, not which way the exercise runs.
+  const [routeDirection, setRouteDirection] = useState<ScaleDirection>('ascending')
   const [selectedPatternByFamily, setSelectedPatternByFamily] = useState<Record<string, string>>({})
   const [selectedRouteByPattern, setSelectedRouteByPattern] = useState<Record<string, string>>({})
   const {
@@ -363,9 +366,13 @@ function ScalesView({
     : undefined
   const selectedRoute =
     availableRoutes.find((route) => route.id === selectedRouteId) ?? availableRoutes[0]
-  const selectedEvents = selectedRoute
-    ? direction === 'ascending' ? selectedRoute.ascending : selectedRoute.descending
-    : []
+  const eventsFor = (direction: ScaleDirection): PlayableEvent[] =>
+    selectedRoute ? (direction === 'ascending' ? selectedRoute.ascending : selectedRoute.descending) : []
+  const selectedEvents = eventsFor(routeDirection)
+  const playRoute = (direction: ScaleDirection) => {
+    setRouteDirection(direction)
+    playback.play(eventsFor(direction))
+  }
   const routeLocationIds = selectedEvents.flatMap((event) =>
     event.locationId ? [event.locationId] : [],
   )
@@ -386,7 +393,7 @@ function ScalesView({
   useEffect(() => {
     clearPlayback()
     return clearPlayback
-  }, [clearPlayback, direction, selectedPattern?.id, selectedRoute?.id])
+  }, [clearPlayback, routeDirection, selectedPattern?.id, selectedRoute?.id])
 
   const comfortLabel = selectedPattern?.ergonomics
     ? selectedPattern.ergonomics.difficulty <= 1
@@ -493,11 +500,18 @@ function ScalesView({
                 </div>
               )}
             </div>
-            <AudioButton
-              label={direction === 'ascending' ? tr('ws.playRouteUp') : tr('ws.playRouteDown')}
-              onClick={() => playback.play(selectedEvents)}
-              disabled={selectedEvents.length === 0}
-            />
+            <div className="play-pair">
+              <AudioButton
+                label={tr('ws.playRouteUp')}
+                onClick={() => playRoute('ascending')}
+                disabled={eventsFor('ascending').length === 0}
+              />
+              <AudioButton
+                label={tr('ws.playRouteDown')}
+                onClick={() => playRoute('descending')}
+                disabled={eventsFor('descending').length === 0}
+              />
+            </div>
           </div>
 
           <div className="scale-route-row">
@@ -571,7 +585,7 @@ function ScalesView({
             config={preferences.config}
             locations={selectedPattern.locations}
             events={selectedEvents}
-            direction={direction}
+            direction={routeDirection}
             activeStepIndex={playback.activeStepIndex}
             showFingerings={showScaleFingerings}
             showShifts={showScaleShifts}
@@ -1417,8 +1431,8 @@ export function GuitarWorkspace({
   const playMidi = (midi: number) => synth.playMidi(midi, preferences.volume)
   const playEvents = (events: PlayableEvent[]) =>
     synth.playEvents(events, preferences.tempo, preferences.volume)
-  const playScale = () =>
-    playEvents(scalePlaybackEvents(activeNotes, shareState.direction))
+  const playScale = (direction: ScaleDirection) =>
+    playEvents(scalePlaybackEvents(activeNotes, direction))
   // The two played steps run their own view instead of a tab.
   const isPlayedStep = practice?.step === 'scale' || practice?.step === 'pentatonic'
 
@@ -1463,7 +1477,6 @@ export function GuitarWorkspace({
           locations={locations}
           preferences={preferences}
           onPreferencesChange={setPreferences}
-          direction={shareState.direction}
           playMidi={playMidi}
           playScale={playScale}
           showFullNeck={practice === undefined}
@@ -1474,7 +1487,6 @@ export function GuitarWorkspace({
           patterns={patterns}
           preferences={preferences}
           onPreferencesChange={setPreferences}
-          direction={shareState.direction}
           playMidi={playMidi}
           playEvents={playEvents}
           tonicSymbol={activeNotes[0]?.symbol ?? ''}

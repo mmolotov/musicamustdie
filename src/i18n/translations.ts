@@ -38,6 +38,10 @@ export const ru: Record<string, string> = {
   'minorVariant.melodic-classical.short': 'Мелодический',
   'minorVariant.melodic-jazz': 'Джазовый мелодический минор',
   'minorVariant.melodic-jazz.short': 'Джазовый',
+  'minorVariant.natural.hint': 'Ступени как в ключе: тот же звукоряд, что у относительного мажора.',
+  'minorVariant.harmonic.hint': 'VII ступень поднята — доминанта становится мажорной, а между VI и VII открывается полтора тона.',
+  'minorVariant.melodic-classical.hint': 'Вверх подняты VI и VII, чтобы мелодия тянулась к тонике; вниз гамма возвращается к натуральной.',
+  'minorVariant.melodic-jazz.hint': 'VI и VII подняты в обе стороны: звукоряд одинаков вверх и вниз, из него строятся джазовые лады.',
 
   // detail tabs
   'tabs.aria': 'Разделы информации о тональности',
@@ -319,6 +323,10 @@ export const en: Record<string, string> = {
   'minorVariant.melodic-classical.short': 'Melodic',
   'minorVariant.melodic-jazz': 'Jazz melodic minor',
   'minorVariant.melodic-jazz.short': 'Jazz',
+  'minorVariant.natural.hint': 'Degrees straight from the key signature — the same notes as the relative major.',
+  'minorVariant.harmonic.hint': 'The 7th is raised: the dominant turns major and a step and a half opens between the 6th and the 7th.',
+  'minorVariant.melodic-classical.hint': 'Going up, the 6th and 7th are raised so the line leans on the tonic; coming down, the scale returns to natural minor.',
+  'minorVariant.melodic-jazz.hint': 'The 6th and 7th stay raised both ways: one scale up and down, and the source of the jazz modes.',
 
   'tabs.aria': 'Key information sections',
   'tabs.notes': 'Notes',

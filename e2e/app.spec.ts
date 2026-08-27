@@ -100,6 +100,46 @@ test('генерирует и фильтрует аккордовые аппли
   await expect(page.getByLabel('Открытые струны')).toBeChecked()
 })
 
+test('направление проигрывания не залипает между тональностями', async ({ page }) => {
+  // Раньше «Вниз» мелодического минора превращало кнопку проигрыша в «Сыграть
+  // вниз» во всём приложении, включая мажор, где переключателя направления нет.
+  await page.goto('/?tonic=9&mode=minor&minorVariant=melodic-classical&section=notes')
+  await expect(page.locator('.note-strip .note-card strong')).toHaveText([
+    'A', 'B', 'C', 'D', 'E', 'F♯', 'G♯',
+  ])
+
+  await page.getByRole('button', { name: '↓ Вниз' }).click()
+  // Направление по-прежнему решает, какие ноты у тональности…
+  await expect(page.locator('.note-strip .note-card strong')).toHaveText([
+    'A', 'B', 'C', 'D', 'E', 'F', 'G',
+  ])
+  // …но кнопки проигрыша всегда обе.
+  await expect(page.locator('.play-pair button')).toHaveText([
+    '▶Сыграть вверх', '▶Сыграть вниз',
+  ])
+
+  await page.getByRole('button', { name: 'C мажор', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'C · До мажор' })).toBeVisible()
+  await expect(page.locator('.play-pair button')).toHaveText([
+    '▶Сыграть вверх', '▶Сыграть вниз',
+  ])
+})
+
+test('пояснение к виду минора меняется вместе с выбором', async ({ page }) => {
+  await page.goto('/?tonic=9&mode=minor&section=notes')
+  await expect(page.locator('.variant-hint')).toContainText('относительного мажора')
+
+  await page.getByRole('button', { name: 'Гармонический' }).click()
+  await expect(page.locator('.variant-hint')).toContainText('VII ступень поднята')
+
+  await page.getByRole('button', { name: 'Джазовый' }).click()
+  await expect(page.locator('.variant-hint')).toContainText('в обе стороны')
+
+  // В мажоре пояснения нет — не из чего выбирать.
+  await page.getByRole('button', { name: 'C мажор', exact: true }).click()
+  await expect(page.locator('.variant-hint')).toHaveCount(0)
+})
+
 test('мобильная версия не создаёт горизонтальную прокрутку страницы', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')

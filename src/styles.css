@@ -651,6 +651,20 @@ main {
   white-space: nowrap;
 }
 
+/* One line about the variant on screen: what its raised degrees actually do. */
+.variant-hint {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.play-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .variant-scroll {
   display: flex;
   gap: 6px;
