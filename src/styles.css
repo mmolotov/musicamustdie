@@ -2341,6 +2341,27 @@ footer {
   }
 }
 
+/* Very large displays. The layout is capped at 1760px, so a 4K panel showed it
+   across 46% of the width with 14px labels — correct in CSS pixels, physically
+   tiny to look at. Scaling the shell keeps every proportion of the design and
+   grows the whole UI at once, which px-based type cannot do on its own.
+   Both tiers ask for height as well as width, so a wide but short window keeps
+   the layout it had; the full step is reserved for genuinely dense 2160px-tall
+   panels. `min-height` is divided back out because the zoom scales the 100vh. */
+@media (min-width: 2000px) and (min-height: 900px) {
+  .app-shell {
+    zoom: 1.25;
+    min-height: calc(100vh / 1.25);
+  }
+}
+
+@media (min-width: 2800px) and (min-height: 1500px) {
+  .app-shell {
+    zoom: 1.6;
+    min-height: calc(100vh / 1.6);
+  }
+}
+
 @media (max-width: 1180px) {
   .main-layout {
     grid-template-columns: 1fr;
