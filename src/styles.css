@@ -1164,20 +1164,19 @@ div.note-card:hover {
   box-shadow: inset 0 0 0 1px rgba(50, 108, 93, 0.1);
 }
 
-/* Family filter and shape list are one row: the filter narrows the list next
-   to it instead of standing above it as a second set of tabs. */
-.pattern-browser {
-  display: grid;
-  grid-template-columns: minmax(150px, auto) minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 4px;
+/* The whole library, one system per heading. Systems stopped being a control
+   over the list — they are how the list itself reads. */
+.library-sections {
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--line);
 }
 
-.family-filter {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+.library-sections section + section {
+  margin-top: 14px;
+}
+
+.library-sections h4 {
+  margin: 0 0 8px;
   color: var(--muted);
   font-size: 11px;
   font-weight: 800;
@@ -1185,15 +1184,19 @@ div.note-card:hover {
   text-transform: uppercase;
 }
 
-.family-filter select {
-  min-height: 44px;
-  padding: 9px 12px;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
+/* Inside the disclosure there is room to wrap, so the sections lay their
+   shapes out in a grid instead of stacking six horizontal scrollbars. */
+.library-sections .pattern-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  overflow: visible;
+  margin-bottom: 0;
+  padding: 0;
+}
+
+.library-sections .pattern-picker .pattern-chip {
+  min-width: 0;
+  flex: none;
 }
 
 /* What the chip already says, kept beside the play button. */
@@ -2762,10 +2765,6 @@ footer {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  .pattern-browser {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .pattern-picker {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2908,11 +2907,6 @@ footer {
   min-width: 178px;
   flex: 1 0 178px;
   scroll-snap-align: start;
-}
-
-.family-filter select {
-  color: var(--ink);
-  background: #15191d;
 }
 
 .pattern-line {

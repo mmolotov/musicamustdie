@@ -306,6 +306,36 @@ function NotesView({
   )
 }
 
+/** One shape in the library: what it is called, where it sits, how it runs. */
+function PatternChip({
+  pattern,
+  isActive,
+  withFamily = false,
+  onSelect,
+}: {
+  pattern: PerformancePattern<FretLocation>
+  isActive: boolean
+  withFamily?: boolean
+  onSelect: (id: string) => void
+}) {
+  const tr = useT()
+  return (
+    <button
+      type="button"
+      role="listitem"
+      className={isActive ? 'pattern-chip is-active' : 'pattern-chip'}
+      onClick={() => onSelect(pattern.id)}
+    >
+      <strong>{pattern.name}</strong>
+      <span>
+        {tr('ws.fretRange', { start: pattern.startPosition, end: pattern.endPosition })}
+        {withFamily && <> · {familyLabel(pattern.system)}</>}
+        {pattern.preferredVariant && <> · {tr('ws.bestStart.inline')}</>}
+      </span>
+    </button>
+  )
+}
+
 interface ScalesViewProps {
   patterns: PerformancePattern<FretLocation>[]
   preferences: GuitarPreferences
@@ -324,33 +354,27 @@ function ScalesView({
   tonicSymbol,
 }: ScalesViewProps) {
   const tr = useT()
-  const [requestedFamily, setRequestedFamily] = useState<PatternFamilyChoice>('recommended')
-  const [selectedPatternByFamily, setSelectedPatternByFamily] = useState<Record<string, string>>({})
+  const [selectedPatternId, setSelectedPatternId] = useState('')
   const [selectedRouteByPattern, setSelectedRouteByPattern] = useState<Record<string, string>>({})
   const {
-    options: generationOptions,
     ranked: rankedPatterns,
     recommended: recommendedGroups,
   } = rankedScaleGroups(patterns, preferences)
   const playback = usePatternPlayback(preferences.tempo, playEvents)
-  const patternGroupsByFamily = new Map<PatternFamilyChoice, ScalePatternDisplayGroup[]>()
-  patternGroupsByFamily.set('recommended', recommendedGroups)
-  SCALE_FAMILY_IDS.forEach((familyId) => {
-    if (familyId === 'recommended') return
-    patternGroupsByFamily.set(
-      familyId,
-      groupScalePatternsForDisplay(
-        rankedPatterns.filter((pattern) => pattern.system === familyId),
-      ),
+  // The systems are not a control any more, they are how the full list reads:
+  // six recommended shapes cover the neck, and the other twenty-odd sit under
+  // one disclosure with a heading each.
+  const librarySections = SCALE_FAMILY_IDS.flatMap((familyId) => {
+    if (familyId === 'recommended') return []
+    const groups = groupScalePatternsForDisplay(
+      rankedPatterns.filter((pattern) => pattern.system === familyId),
     )
+    return groups.length > 0 ? [{ familyId, groups }] : []
   })
-  const effectiveFamily = requestedFamily
-  const activeGroups = patternGroupsByFamily.get(effectiveFamily) ?? []
-  const activePatterns = activeGroups.map((group) => group.pattern)
-  const selectedPatternId = selectedPatternByFamily[effectiveFamily] ?? ''
-  const selectedGroup = activeGroups.find((group) =>
-    group.equivalentIds.includes(selectedPatternId),
-  ) ?? activeGroups[0]
+  const libraryCount = librarySections.reduce((sum, section) => sum + section.groups.length, 0)
+  const allGroups = [...recommendedGroups, ...librarySections.flatMap((section) => section.groups)]
+  const selectedGroup =
+    allGroups.find((group) => group.equivalentIds.includes(selectedPatternId)) ?? recommendedGroups[0]
   const selectedPattern = selectedGroup?.pattern
   const availableRoutes: PatternRoute[] = selectedPattern
     ? routesOf(selectedPattern, tr('ws.route'))
@@ -388,21 +412,6 @@ function ScalesView({
     return clearPlayback
   }, [clearPlayback, selectedPattern?.id, selectedRoute?.id])
 
-  const comfortLabel = selectedPattern?.ergonomics
-    ? selectedPattern.ergonomics.difficulty <= 1
-      ? tr('ws.comfort.easy')
-      : selectedPattern.ergonomics.difficulty <= 3
-        ? tr('ws.comfort.medium')
-        : tr('ws.comfort.hard')
-    : tr('ws.comfort.none')
-  const comfortTone = selectedPattern?.ergonomics
-    ? selectedPattern.ergonomics.difficulty <= 1
-      ? 'easy'
-      : selectedPattern.ergonomics.difficulty <= 3 ? 'medium' : 'hard'
-    : 'medium'
-  const profileLabel = generationOptions.reachProfile === 'compact'
-    ? tr('ws.profile.compact')
-    : generationOptions.reachProfile === 'stretch' ? tr('ws.profile.stretch') : tr('ws.profile.balanced')
   const viewport = selectedPattern
     ? {
         fromFret: Math.max(0, selectedPattern.startPosition - 1),
@@ -419,57 +428,54 @@ function ScalesView({
         </div>
       </div>
 
-      {activePatterns.length === 0 || !selectedPattern ? (
+      {allGroups.length === 0 || !selectedPattern ? (
         <div className="empty-state">
           <strong>{tr('ws.familyUnavailable')}</strong>
           <p>{tr('ws.familyUnavailableHint')}</p>
         </div>
       ) : (
         <>
-          {/* Family and shape were two rows of the same choice, with the family
-              repeated again on every chip. It is a filter over one list now. */}
-          <div className="pattern-browser">
-            <label className="family-filter">
-              <span>{tr('ws.familyTabsAria')}</span>
-              <select
-                value={effectiveFamily}
-                onChange={(event) => setRequestedFamily(event.target.value as PatternFamilyChoice)}
-              >
-                {SCALE_FAMILY_IDS.map((familyId) => (
-                  <option key={familyId} value={familyId}>
-                    {familyLabel(familyId)} · {patternGroupsByFamily.get(familyId)?.length ?? 0}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="pattern-picker" role="list" aria-label={tr('ws.positionsAria')}>
-            {activePatterns.map((pattern) => (
-              <button
-                type="button"
-                role="listitem"
-                key={pattern.id}
-                className={selectedPattern.id === pattern.id ? 'pattern-chip is-active' : 'pattern-chip'}
-                onClick={() => setSelectedPatternByFamily((current) => ({
-                  ...current,
-                  [effectiveFamily]: pattern.id,
-                }))}
-              >
-                <strong>{pattern.name}</strong>
-                <span>
-                  {tr('ws.fretRange', { start: pattern.startPosition, end: pattern.endPosition })}
-                  {effectiveFamily === 'recommended' && (
-                    <> · {familyLabel(pattern.system)}</>
-                  )}
-                  {pattern.preferredVariant && <> · {tr('ws.bestStart.inline')}</>}
-                </span>
-              </button>
+          {/* Six shapes that between them cover the neck. The rest of the
+              library is a click away rather than a row of tabs on top. */}
+          <p className="control-label">{tr('ws.bestShapes')}</p>
+          <div className="pattern-picker" role="list" aria-label={tr('ws.positionsAria')}>
+            {recommendedGroups.map((group) => (
+              <PatternChip
+                key={group.pattern.id}
+                pattern={group.pattern}
+                withFamily
+                isActive={group.equivalentIds.includes(selectedPattern.id)}
+                onSelect={setSelectedPatternId}
+              />
             ))}
-            </div>
           </div>
 
-          {/* The chip above already carries the name, the frets and the family;
-              the line keeps them next to the play button and folds everything
-              that is genuinely extra out of the way. */}
+          <details className="filter-panel">
+            <summary>
+              <span>{tr('ws.wholeLibrary')}</span>
+              <span className="filter-summary">{libraryCount}</span>
+            </summary>
+            <div className="library-sections">
+              {librarySections.map((section) => (
+                <section key={section.familyId}>
+                  <h4>{familyLabel(section.familyId)}</h4>
+                  <div className="pattern-picker" role="list" aria-label={familyLabel(section.familyId)}>
+                    {section.groups.map((group) => (
+                      <PatternChip
+                        key={group.pattern.id}
+                        pattern={group.pattern}
+                        isActive={group.equivalentIds.includes(selectedPattern.id)}
+                        onSelect={setSelectedPatternId}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </details>
+
+          {/* One line for the shape on screen: what it is, where it sits, what
+              the run covers — and the button that plays it. */}
           <div className="pattern-line">
             <p>
               <strong>{selectedPattern.name}</strong>
@@ -477,6 +483,8 @@ function ScalesView({
               {tr('ws.fretRange', { start: selectedPattern.startPosition, end: selectedPattern.endPosition })}
               {' · '}
               {familyLabel(selectedPattern.system)}
+              {' · '}
+              {tr('ws.routeSummary')} <strong>{routeLabel}</strong>
             </p>
             <AudioButton
               label={tr('ws.playRoute')}
@@ -484,33 +492,6 @@ function ScalesView({
               disabled={selectedEvents.length === 0}
             />
           </div>
-
-          <details className="filter-panel">
-            <summary>
-              <span>{tr('ws.shapeDetails')}</span>
-              <span className="filter-summary">{comfortLabel}</span>
-            </summary>
-            <div className="pattern-details">
-              <p>{selectedPattern.description}</p>
-              <p className="pattern-equivalents">{tr('ws.profileBadge', { profile: profileLabel })}</p>
-              {selectedGroup.aliasNames.length > 0 && (
-                <p className="pattern-equivalents">
-                  {tr('ws.matchesOnBoard')} <strong>{selectedGroup.aliasNames.join(', ')}</strong>
-                </p>
-              )}
-              <p className="route-summary">{tr('ws.routeSummary')} <strong>{routeLabel}</strong></p>
-              {selectedPattern.tags && selectedPattern.tags.length > 0 && (
-                <div className="pattern-tags" aria-label={tr('ws.patternTagsAria')}>
-                  <span className={`comfort-badge comfort-badge--${comfortTone}`}>{comfortLabel}</span>
-                  {selectedPattern.tags.map((tag) => <span key={tag}>{tag}</span>)}
-                  {selectedPattern.preferredVariant && <span>{tr('ws.bestStart')}</span>}
-                  {selectedPattern.ergonomics && (
-                    <span>{tr('ws.shiftsCount', { n: selectedPattern.ergonomics.shifts })}</span>
-                  )}
-                </div>
-              )}
-            </div>
-          </details>
 
           <div className="scale-route-row">
             <div>
