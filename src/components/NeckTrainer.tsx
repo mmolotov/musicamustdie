@@ -315,6 +315,12 @@ function NeckSession({ instrumentId, config, volume, seed }: SessionProps) {
   const { playEvents, playMidi } = useSynth()
   const sectionRef = useRef<HTMLElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
+  // The zone as it is now, for code that resumes after the permission prompt:
+  // the prompt can sit there for a while, and the chips stay clickable under it.
+  const cardsRef = useRef(cards)
+  useEffect(() => {
+    cardsRef.current = cards
+  }, [cards])
   // A microphone that dropped out mid-session leaves the round where it was;
   // what is on screen follows the microphone.
   const phase: NeckPhase = status === 'listening' ? state.phase : 'idle'
@@ -339,7 +345,7 @@ function NeckSession({ instrumentId, config, volume, seed }: SessionProps) {
     if (!listening) return
     dispatch({
       type: 'begin',
-      pool: cards,
+      pool: cardsRef.current,
       openStrings: config.strings,
       frets: config.frets,
       at: performance.now(),
