@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   createRandom,
   highpass,
@@ -10,6 +10,11 @@ import {
 } from '../test/pluckedString'
 import { attackRatio, createNoteTracker, type NoteEvent } from './noteTracker'
 import { createInstrumentDetector, freqFromMidi } from './pitch'
+
+// Whole performances are synthesised and analysed sample by sample, and
+// coverage instrumentation slows those loops several times over. Every case
+// takes about a second on a laptop; this is headroom for a slow CI runner.
+vi.setConfig({ testTimeout: 20_000 })
 
 const SAMPLE_RATE = 48000
 /** The listener polls every 20 ms; a slightly longer hop is the harder case. */
@@ -235,10 +240,12 @@ describe('трекер сыгранных нот', () => {
     expect(heard(FAST_RUN, LAPTOP_MIC)).toEqual([40, 45, 50, 55, 59, 64, 59, 55])
   })
 
-  it('то же самое на тихой неподключённой электрогитаре', () => {
-    expect(heard(FOUR_NOTES, UNPLUGGED)).toEqual([54, 42, 66, 78])
-    expect(heard(REPICKED, UNPLUGGED)).toEqual([54, 54])
-    expect(heard(FAST_RUN, UNPLUGGED)).toEqual([40, 45, 50, 55, 59, 64, 59, 55])
+  it.each([
+    ['четыре ноты с глушением', FOUR_NOTES, [54, 42, 66, 78]],
+    ['повторный щипок', REPICKED, [54, 54]],
+    ['быстрый пассаж', FAST_RUN, [40, 45, 50, 55, 59, 64, 59, 55]],
+  ])('на тихой неподключённой электрогитаре: %s', (_name, performance, notes) => {
+    expect(heard(performance, UNPLUGGED)).toEqual(notes)
   })
 
   it('сообщает, насколько нота выше или ниже строя', () => {

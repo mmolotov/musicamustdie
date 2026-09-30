@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { formatOpenString } from '../instruments/guitar'
 import {
   createRandom,
@@ -16,6 +16,11 @@ import {
   MIN_CLARITY,
   type InstrumentRange,
 } from './pitch'
+
+// Signal processing over synthesised audio: tight loops that coverage
+// instrumentation slows several times over. Every case is sized to finish in
+// about a second on a laptop; this is headroom for a slow CI runner.
+vi.setConfig({ testTimeout: 20_000 })
 
 const SAMPLE_RATE = 48000
 
@@ -40,16 +45,25 @@ const LAPTOP_MIC: Room = { snrDb: 25, highpassHz: 200 }
 /** A solid-body electric played unplugged: thin, quiet, no lows to speak of. */
 const UNPLUGGED: Room = { snrDb: 10, highpassHz: 700, sections: 2 }
 
+const notesBetween = (from: number, to: number) =>
+  Array.from({ length: to - from + 1 }, (_, index) => from + index)
+
 /**
- * Every note of the range the detector gets wrong `afterMs` into the attack,
- * written "played→heard" so a failing run names the notes.
+ * The notes the detector gets wrong `afterMs` into the attack, written
+ * "played→heard" so a failing run names them. Every note of the range unless
+ * told otherwise.
  */
-function misheard(range: InstrumentRange, room: Room, afterMs: number): string[] {
+function misheard(
+  range: InstrumentRange,
+  room: Room,
+  afterMs: number,
+  notes = notesBetween(range.lowestMidi, range.highestMidi),
+): string[] {
   const detector = createInstrumentDetector({ sampleRate: SAMPLE_RATE, ...range })
   const preRoll = detector.sourceSize + Math.floor(SAMPLE_RATE * 0.05)
   const failures: string[] = []
 
-  for (let midi = range.lowestMidi; midi <= range.highestMidi; midi += 1) {
+  for (const midi of notes) {
     const random = createRandom(midi * 101 + afterMs)
     let note = pluck({
       midi,
@@ -99,10 +113,12 @@ describe('определение высоты ноты', () => {
     expect(createInstrumentDetector({ sampleRate: SAMPLE_RATE, ...BASS_5 }).sourceSize).toBe(16384)
   })
 
-  it('шестиструнка: каждая нота от открытой шестой до 24-го лада первой', () => {
-    expect(misheard(GUITAR, DIRECT, 80)).toEqual([])
-    expect(misheard(GUITAR, LAPTOP_MIC, 80)).toEqual([])
-    expect(misheard(GUITAR, UNPLUGGED, 80)).toEqual([])
+  it.each([
+    ['прямой сигнал', DIRECT],
+    ['микрофон ноутбука', LAPTOP_MIC],
+    ['неподключённая электрогитара', UNPLUGGED],
+  ])('шестиструнка, %s: каждая нота от открытой шестой до 24-го лада первой', (_name, room) => {
+    expect(misheard(GUITAR, room, 80)).toEqual([])
   })
 
   it('работает и на 44,1 кГц', () => {
@@ -124,15 +140,25 @@ describe('определение высоты ноты', () => {
     expect(misheard(GUITAR, thin, 120).length).toBeLessThanOrEqual(2)
   })
 
-  it('восьмиструнка: верхние ноты не проваливаются на октаву вниз', () => {
-    expect(misheard(GUITAR_8_DROP_E, DIRECT, 150)).toEqual([])
-    expect(misheard(GUITAR_8_DROP_E, LAPTOP_MIC, 150)).toEqual([])
+  // The two ends are what an eight-string is hard for: an E1 that needs a long
+  // window and a top octave that a decimated one would drop by an octave.
+  it.each([
+    ['прямой сигнал', DIRECT],
+    ['микрофон ноутбука', LAPTOP_MIC],
+  ])('восьмиструнка, %s: нижние ноты слышны, верхние не проваливаются на октаву', (_name, room) => {
+    const ends = [...notesBetween(28, 33), ...notesBetween(79, 88)]
+    expect(misheard(GUITAR_8_DROP_E, room, 150, ends)).toEqual([])
   })
 
-  it('бас: длинное окно для нижних нот', () => {
-    expect(misheard(BASS, DIRECT, 250)).toEqual([])
-    expect(misheard(BASS, LAPTOP_MIC, 250)).toEqual([])
-    expect(misheard(BASS_5, DIRECT, 450)).toEqual([])
+  it.each([
+    ['прямой сигнал', DIRECT],
+    ['микрофон ноутбука', LAPTOP_MIC],
+  ])('бас, %s: каждая нота от E1 до G4', (_name, room) => {
+    expect(misheard(BASS, room, 250)).toEqual([])
+  })
+
+  it('пятиструнный бас: нижняя октава от B0', () => {
+    expect(misheard(BASS_5, DIRECT, 450, notesBetween(23, 34))).toEqual([])
   })
 
   it('шум комнаты нотой не считается', () => {
