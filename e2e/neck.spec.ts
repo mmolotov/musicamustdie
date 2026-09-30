@@ -65,9 +65,13 @@ test('гриф без рук: саундчек, верная нота, ошиб�
   // Карточка 3 — подсказка по пробелу: гриф показывает клетку и ждёт её.
   await expect(cardHeading(page, 3)).toBeVisible()
   const third = await cardOnScreen(page)
+  // Фокус на чипе струны: пробел всё равно даёт подсказку, а не выключает струну.
+  await stringChip(page, '6-я струна, E').focus()
   await page.keyboard.press('Space')
   await expect(feedback(page)).toContainText('— сыграйте')
   await expect(marks(page, 'hint')).not.toHaveCount(0)
+  await expect(stringChip(page, '6-я струна, E')).toHaveAttribute('aria-pressed', 'true')
+  await expect(cardHeading(page, 3)).toBeVisible()
   await pluck(page, third.midi)
   await expect(tally(page).nth(2)).toHaveText('1')
 
