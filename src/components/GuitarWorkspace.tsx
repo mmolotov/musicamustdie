@@ -10,7 +10,6 @@ import {
   generateGuitarPatterns,
   generatePentatonicBoxPatterns,
   groupScalePatternsForDisplay,
-  guitarSpec,
   hasCagedTopology,
   locateScaleOnFretboard,
   rankScalePatterns,
@@ -22,7 +21,6 @@ import {
   type ScalePatternDisplayGroup,
   type VoicingConstraints,
 } from '../instruments/guitar'
-import { getFrettedSpec } from '../instruments/fretted'
 import {
   buildPentatonic,
   defaultFlavor,
@@ -33,7 +31,7 @@ import { keyDisplayName } from '../music/theory'
 import type { InstrumentWorkspaceProps } from '../instruments/uiRegistry'
 import type { ChordDefinition, ScaleDirection, ScaleNote } from '../music/types'
 import { ascendingScaleMidis, midiNearMiddleC } from '../music/playback'
-import { usePersistentState } from '../hooks/usePersistentState'
+import { useFrettedPreferences } from '../hooks/useFrettedPreferences'
 import { useSynth } from '../hooks/useSynth'
 import { useVoicings } from '../hooks/useVoicings'
 import { Fretboard } from './Fretboard'
@@ -1388,15 +1386,7 @@ export function GuitarWorkspace({
 }: InstrumentWorkspaceProps) {
   const tr = useT()
   const lang = useLang()
-  // Per-instrument tuning presets, string counts, storage key and defaults.
-  // The workspace is remounted on instrument change (key in App), so reading
-  // the spec once here is enough.
-  const spec = getFrettedSpec(shareState.instrument) ?? guitarSpec
-  const [preferences, setPreferences] = usePersistentState<GuitarPreferences>(
-    spec.storageKey,
-    structuredClone(spec.defaultPreferences),
-    spec.validatePreferences,
-  )
+  const { spec, preferences, setPreferences } = useFrettedPreferences(shareState.instrument)
   const synth = useSynth()
   const locations = useMemo(
     () => locateScaleOnFretboard(preferences.config, activeNotes),

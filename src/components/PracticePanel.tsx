@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { chromaticNotes, DEGREE_LABELS, scaleDisplayName } from '../music/theory'
+import { DEGREE_LABELS, scaleDisplayName, spellingsOf } from '../music/theory'
 import {
   buildPentatonic,
   pentatonicDisplayName,
@@ -20,15 +20,6 @@ import type { PracticeState, StepOutcome, TriadQuality } from '../practice/types
 import { useT } from '../i18n'
 
 const CHROMATIC_PITCH_CLASSES = Array.from({ length: 12 }, (_, pitchClass) => pitchClass)
-
-function spellingsOf(pitchClass: number): { symbols: string; solfege: string; names: string[] } {
-  const notes = chromaticNotes(pitchClass)
-  return {
-    symbols: notes.map((note) => note.symbol).join(' / '),
-    solfege: notes.map((note) => note.solfege).join(' / '),
-    names: notes.map((note) => note.accessibleName),
-  }
-}
 
 function ChromaticKeyboard({
   isDisabled,

@@ -21,7 +21,11 @@ export interface PracticeControls {
   goToStep: (stepIndex: number) => void
 }
 
-function readSeed(): number {
+/**
+ * The draw seed: `?seed=` when the address pins one, the clock otherwise. Both
+ * drills read it, so a test can replay either from the URL alone.
+ */
+export function readSeed(): number {
   try {
     const raw = new URLSearchParams(window.location.search).get('seed')
     const parsed = Number(raw)

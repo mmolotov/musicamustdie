@@ -9,6 +9,9 @@ import type {
 
 export type DetailSection = 'notes' | 'scales' | 'pentatonic' | 'chords'
 
+/** What practice mode drills: keys off the wheel, or notes on the neck. */
+export type PracticeDrill = 'keys' | 'neck'
+
 export interface ShareState {
   instrument: string
   selection: KeySelection
@@ -16,6 +19,7 @@ export interface ShareState {
   direction: ScaleDirection
   section: DetailSection
   practice: boolean
+  drill: PracticeDrill
 }
 
 const DEFAULT_SHARE_STATE: ShareState = {
@@ -25,6 +29,7 @@ const DEFAULT_SHARE_STATE: ShareState = {
   direction: 'ascending',
   section: 'notes',
   practice: false,
+  drill: 'keys',
 }
 
 function oneOf<T extends string>(value: string | null, choices: readonly T[], fallback: T): T {
@@ -33,6 +38,7 @@ function oneOf<T extends string>(value: string | null, choices: readonly T[], fa
 
 function readUrlState(): ShareState {
   const params = new URLSearchParams(window.location.search)
+  const practice = params.get('practice')
   const tonicValue = Number(params.get('tonic'))
   const tonic = Number.isInteger(tonicValue) && tonicValue >= 0 && tonicValue <= 11 ? tonicValue : 0
   const mode = oneOf<Mode>(params.get('mode'), ['major', 'minor'], 'major')
@@ -59,7 +65,8 @@ function readUrlState(): ShareState {
       ['notes', 'scales', 'pentatonic', 'chords'],
       'notes',
     ),
-    practice: params.get('practice') === '1',
+    practice: practice === '1' || practice === 'neck',
+    drill: practice === 'neck' ? 'neck' : 'keys',
   }
 }
 
@@ -69,9 +76,10 @@ function writeUrlState(state: ShareState): void {
   if (state.practice) {
     // The drilled key is drawn by the wheel, so publishing it here would be
     // stale at best and a peek at the answer at worst. Only the mode, the
-    // minor variant being drilled, and the draw seed survive a reload.
-    params.set('practice', '1')
-    params.set('minorVariant', state.minorVariant)
+    // minor variant being drilled, and the draw seed survive a reload. The
+    // neck drill has no key at all.
+    params.set('practice', state.drill === 'neck' ? 'neck' : '1')
+    if (state.drill === 'keys') params.set('minorVariant', state.minorVariant)
     const seed = new URLSearchParams(window.location.search).get('seed')
     if (seed) params.set('seed', seed)
   } else {

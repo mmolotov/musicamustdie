@@ -2069,7 +2069,9 @@ footer {
   color: #8f9994;
 }
 
-.segmented button:hover:not(:disabled) {
+/* Not the active one: the pointer is still over a segment right after it was
+   clicked, and a hover tint there would make the choice look unmade. */
+.segmented button:hover:not(:disabled):not(.is-active) {
   color: #dbe4de;
   background: rgba(255, 255, 255, 0.045);
 }
@@ -3757,4 +3759,285 @@ footer {
   max-width: 52ch;
   color: var(--muted);
   font-size: 12px;
+}
+
+/* Neck trainer: the hands-free drill inside practice mode. The key circle has
+   nothing to say here, so the panel takes the whole width and the neck with it. */
+.main-layout.main-layout--solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.details-hero--compact {
+  padding-top: 24px;
+  padding-bottom: 22px;
+}
+
+/* The drill switch sits above the panels, at the same spot in both drills:
+   inside a panel it moved whenever the layout under it changed. */
+.practice-drills {
+  display: flex;
+  margin-bottom: 18px;
+}
+
+.neck-trainer {
+  padding: 26px 36px 40px;
+}
+
+/* Focus is parked here so a pedal or the space bar cannot press "Start" twice. */
+.neck-trainer:focus-visible {
+  outline: none;
+}
+
+.neck-zone {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper-strong);
+}
+
+.neck-zone__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.neck-zone .control-label {
+  margin-bottom: 0;
+}
+
+.neck-zone .practice-chip {
+  min-height: 42px;
+  padding: 8px 14px;
+  font-size: 14px;
+}
+
+.neck-trainer .practice-launch {
+  margin-bottom: 22px;
+}
+
+.neck-trainer .practice-launch .error-callout {
+  margin-bottom: 0;
+}
+
+.neck-stage {
+  margin-bottom: 18px;
+  padding: 24px 20px 22px;
+  /* Scrolled to when the session starts, with a little air above it. */
+  scroll-margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--paper-strong);
+  text-align: center;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.neck-stage[data-tone="correct"] {
+  border-color: var(--sage);
+  box-shadow: 0 0 40px rgba(183, 255, 42, 0.2);
+}
+
+.neck-stage[data-tone="wrong"] {
+  border-color: var(--coral);
+  box-shadow: 0 0 40px rgba(255, 60, 172, 0.18);
+}
+
+.neck-stage[data-tone="hint"] {
+  border-color: rgba(244, 255, 114, 0.6);
+}
+
+/* Read from a music stand's distance, with a guitar in the way. */
+.neck-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0 0.18em;
+  margin: 0;
+  font-family: "Arial Black", "Helvetica Neue", Arial, sans-serif;
+  font-size: clamp(64px, 9vw, 132px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.neck-prompt span {
+  color: var(--muted);
+  font-size: 0.42em;
+  letter-spacing: -0.02em;
+}
+
+.neck-prompt small {
+  flex-basis: 100%;
+  margin-top: 10px;
+  color: var(--muted);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(15px, 1.5vw, 21px);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.neck-sub {
+  min-height: 1.3em;
+  margin: 12px 0 0;
+  font-size: clamp(22px, 3.2vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.neck-feedback {
+  min-height: 1.5em;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: clamp(16px, 1.9vw, 22px);
+  font-weight: 700;
+}
+
+.neck-stage[data-tone="correct"] .neck-feedback {
+  color: var(--sage);
+}
+
+.neck-stage[data-tone="wrong"] .neck-feedback {
+  color: var(--coral);
+}
+
+.neck-stage[data-tone="hint"] .neck-feedback {
+  color: var(--yellow);
+}
+
+.neck-board {
+  margin-bottom: 18px;
+}
+
+/* A five-fret zone is a short board: it keeps its natural size in the middle
+   of the panel instead of being blown up to the panel's width. Phones keep the
+   scrolling board every other view has. */
+@media (min-width: 801px) {
+  .neck-board .fretboard-scroll {
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .neck-board .fretboard {
+    width: auto;
+    max-width: 100%;
+  }
+}
+
+.fretboard .is-muted .fretboard__string {
+  opacity: 0.2;
+}
+
+.fretboard .is-muted .fretboard__string-label {
+  opacity: 0.35;
+}
+
+.fret-note.is-hint .fret-note__marker {
+  fill: var(--yellow);
+  stroke: #fdffd6;
+}
+
+.fret-note.is-correct .fret-note__marker {
+  fill: var(--sage);
+  stroke: #e9ffb8;
+}
+
+.fret-note.is-wrong .fret-note__marker {
+  fill: var(--coral);
+  stroke: #ffc4e6;
+}
+
+.fret-note.is-hint text,
+.fret-note.is-correct text,
+.fret-note.is-wrong text {
+  fill: #11150d;
+}
+
+.neck-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+}
+
+.neck-footer .practice-note {
+  margin: 0;
+}
+
+.neck-meter {
+  display: flex;
+  flex: 1 1 320px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  min-width: 0;
+}
+
+.neck-meter__bar {
+  position: relative;
+  flex: 1 1 140px;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: #1d2226;
+}
+
+.neck-meter__level {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--sage);
+}
+
+.neck-meter__gate {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--coral);
+}
+
+.neck-meter__text {
+  min-width: 17ch;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.neck-meter__input {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.neck-meter__input select {
+  max-width: 230px;
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--paper-strong);
+}
+
+@media (max-width: 760px) {
+  .neck-trainer {
+    padding: 22px 20px 32px;
+  }
+
+  .neck-zone {
+    padding: 16px 14px;
+  }
+
+  .neck-stage {
+    padding: 22px 12px 20px;
+  }
+
+  .neck-footer .secondary-button {
+    flex: 1;
+  }
 }

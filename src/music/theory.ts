@@ -372,7 +372,7 @@ export function keyDisplayName(selection: KeySelection): string {
   return `${tonic.symbol} · ${tonic.solfege} ${modeLabel}`
 }
 
-function pluralizeRu(count: number, one: string, few: string, many: string): string {
+export function pluralizeRu(count: number, one: string, few: string, many: string): string {
   if (count % 10 === 1 && count % 100 !== 11) return one
   if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return few
   return many
@@ -432,6 +432,23 @@ const CHROMATIC_SPELLINGS: Record<number, TonicSpec[]> = {
 export function chromaticNotes(pitchClass: number): SpelledNote[] {
   const specs = CHROMATIC_SPELLINGS[mod(pitchClass)] ?? []
   return specs.map((spec) => toSpelledNote(spec, mod(pitchClass)))
+}
+
+/**
+ * A pitch class the way a question names it: every spelling side by side, so
+ * the label never hands out the sharp-or-flat half of an answer.
+ */
+export function spellingsOf(pitchClass: number): {
+  symbols: string
+  solfege: string
+  names: string[]
+} {
+  const notes = chromaticNotes(pitchClass)
+  return {
+    symbols: notes.map((note) => note.symbol).join(' / '),
+    solfege: notes.map((note) => note.solfege).join(' / '),
+    names: notes.map((note) => note.accessibleName),
+  }
 }
 
 /**

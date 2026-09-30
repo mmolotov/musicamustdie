@@ -30,9 +30,24 @@ export interface InstrumentWorkspaceProps {
   practice?: PracticeDelegate
 }
 
+/**
+ * The neck drill is about the instrument and not about a key, so it gets none
+ * of the workspace's scale props — only what it needs to find its own
+ * preferences and to share the settings dialog.
+ */
+export interface NeckTrainerProps {
+  instrumentId: string
+  /** Deal seed; see `readSeed`. */
+  seed: number
+  settingsOpen: boolean
+  onCloseSettings: () => void
+}
+
 export interface InstrumentUiModule {
   instrumentId: string
   Workspace: ComponentType<InstrumentWorkspaceProps>
+  /** Absent for instruments that have no neck to learn. */
+  NeckTrainer?: ComponentType<NeckTrainerProps>
 }
 
 const uiModules = new Map<string, InstrumentUiModule>()
