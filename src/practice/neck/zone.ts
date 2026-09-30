@@ -14,6 +14,19 @@ export function spanFrets(span: FretSpan, frets: number): { from: number; to: nu
   return { from: 0, to: frets }
 }
 
+/**
+ * Spans worth offering on a neck of `frets` frets: "12 and up" needs something
+ * above the twelfth fret, and "the whole neck" is no different from 0–12 on a
+ * twelve-fret instrument.
+ */
+export function availableSpans(frets: number): FretSpan[] {
+  return FRET_SPANS.filter((span) => {
+    if (span === 'high') return frets >= 15
+    if (span === 'all') return frets > 12
+    return true
+  })
+}
+
 function everyString(stringCount: number): number[] {
   return Array.from({ length: stringCount }, (_, stringIndex) => stringIndex)
 }
@@ -24,14 +37,19 @@ export function defaultZone(stringCount: number): NeckZone {
 
 /**
  * Fits a saved zone to the instrument as it is configured now: a zone saved on
- * a seven-string must not ask for a string a six-string does not have, and a
- * zone with no strings left falls back to all of them.
+ * a seven-string must not ask for a string a six-string does not have, a zone
+ * with no strings left falls back to all of them, and a span the neck is too
+ * short for falls back to the first twelve frets.
  */
-export function normalizeZone(zone: NeckZone, stringCount: number): NeckZone {
+export function normalizeZone(zone: NeckZone, stringCount: number, frets: number): NeckZone {
   const strings = [...new Set(zone.strings)]
     .filter((stringIndex) => stringIndex >= 0 && stringIndex < stringCount)
     .sort((a, b) => a - b)
-  return { ...zone, strings: strings.length > 0 ? strings : everyString(stringCount) }
+  return {
+    ...zone,
+    strings: strings.length > 0 ? strings : everyString(stringCount),
+    span: availableSpans(frets).includes(zone.span) ? zone.span : 'low',
+  }
 }
 
 export function isNeckZone(value: unknown): value is NeckZone {
@@ -55,17 +73,18 @@ export function zoneCards(
   frets: number,
   zone: NeckZone,
 ): NeckCard[] {
-  const { from, to } = spanFrets(zone.span, frets)
+  const { strings, span, pool } = normalizeZone(zone, openStrings.length, frets)
+  const { from, to } = spanFrets(span, frets)
   const cards: NeckCard[] = []
 
-  for (const stringIndex of normalizeZone(zone, openStrings.length).strings) {
+  for (const stringIndex of strings) {
     const open = openStrings[stringIndex]
     if (open === undefined) continue
     const byPitchClass = new Map<number, NeckCell[]>()
     for (let fret = from; fret <= to; fret += 1) {
       const midi = open + fret
       const pitchClass = mod(midi)
-      if (zone.pool === 'natural' && !NATURAL_PITCH_CLASSES.includes(pitchClass)) continue
+      if (pool === 'natural' && !NATURAL_PITCH_CLASSES.includes(pitchClass)) continue
       const cells = byPitchClass.get(pitchClass) ?? []
       cells.push({ stringIndex, fret, midi })
       byPitchClass.set(pitchClass, cells)

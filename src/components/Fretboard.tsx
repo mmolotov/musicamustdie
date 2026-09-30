@@ -9,6 +9,9 @@ interface FretboardViewport {
   toFret: number
 }
 
+/** What a practice mark says about its position. */
+export type FretTone = 'hint' | 'correct' | 'wrong'
+
 interface FretboardProps {
   config: GuitarConfig
   locations: FretLocation[]
@@ -28,6 +31,18 @@ interface FretboardProps {
    * because "5" would be a lie about a lowered fifth.
    */
   accentPitchClasses?: readonly number[]
+  /**
+   * Practice marks — the hint, the right answer, the note played instead. The
+   * tone takes the marker's colour over.
+   */
+  markTone?: (location: FretLocation) => FretTone | undefined
+  /** Strings left out of the practice zone: still drawn, but faded. */
+  mutedStrings?: readonly number[]
+  /**
+   * A mark to bring into view on a board that scrolls sideways — the hint a
+   * phone would otherwise show eight frets off screen.
+   */
+  scrollToLocationId?: string | null
 }
 
 const MARKER_FRETS = new Set([3, 5, 7, 9, 12, 15, 17, 19, 21, 24])
@@ -44,6 +59,9 @@ export function Fretboard({
   routeEvents = [],
   viewport,
   accentPitchClasses,
+  markTone,
+  mutedStrings,
+  scrollToLocationId = null,
   showFingerings = false,
   showShifts = false,
 }: FretboardProps) {
@@ -67,6 +85,7 @@ export function Fretboard({
   const markerRadius = focused ? 16 : 13
   const activeEvent = activeStepIndex === null ? undefined : routeEvents[activeStepIndex]
   const resolvedActiveLocationId = activeEvent?.locationId ?? activeLocationId
+  const scrollTargetId = resolvedActiveLocationId ?? scrollToLocationId
   const routeEventByLocation = useMemo(() => {
     const result = new Map<string, PlayableEvent>()
     routeEvents.forEach((event) => {
@@ -99,10 +118,10 @@ export function Fretboard({
   }
 
   useEffect(() => {
-    if (!resolvedActiveLocationId || !scrollRef.current) return
+    if (!scrollTargetId || !scrollRef.current) return
     const scroller = scrollRef.current
     const marker = scroller.querySelector<SVGGElement>(
-      `[data-location-id="${resolvedActiveLocationId}"]`,
+      `[data-location-id="${scrollTargetId}"]`,
     )
     if (!marker || typeof scroller.scrollTo !== 'function') return
 
@@ -123,7 +142,7 @@ export function Fretboard({
         markerBox.width / 2,
       behavior: 'smooth',
     })
-  }, [resolvedActiveLocationId])
+  }, [scrollTargetId])
 
   const boardLeft = Math.min(mirrorX(boardStartNatural), mirrorX(boardEndNatural))
 
@@ -165,8 +184,9 @@ export function Fretboard({
         {config.strings.map((openMidi, stringIndex) => {
           const y = stringY(stringIndex)
           const thickness = 1 + (config.strings.length - stringIndex) * 0.22
+          const muted = mutedStrings?.includes(stringIndex) ?? false
           return (
-            <g key={`string-${stringIndex}`}>
+            <g key={`string-${stringIndex}`} className={muted ? 'is-muted' : undefined}>
               <line
                 x1={isLeft ? boardLeft : 16}
                 x2={isLeft ? width - 16 : boardLeft + boardEndNatural - boardStartNatural}
@@ -216,6 +236,7 @@ export function Fretboard({
                 : String(location.degree)
               : location.note.symbol
           const root = location.degree === 1 && !accent
+          const tone = markTone?.(location)
           const isPlaying = resolvedActiveLocationId === location.id
           const isOnRoute = routeLocationIds?.includes(location.id) ?? false
           const isContext = routeLocationIds !== undefined && !isOnRoute
@@ -237,7 +258,7 @@ export function Fretboard({
                 fret: location.fret,
                 finger: finger ? tr('fretboard.fingerSuffix', { n: finger }) : '',
               })}
-              className={`fret-note${root ? ' is-root' : ''}${accent ? ' is-accent' : ''}${isPlaying ? ' is-playing' : ''}${isContext ? ' is-context' : ''}${isOnRoute ? ' is-route' : ''}${hasShift ? ' has-shift' : ''}`}
+              className={`fret-note${root ? ' is-root' : ''}${accent ? ' is-accent' : ''}${tone ? ` is-${tone}` : ''}${isPlaying ? ' is-playing' : ''}${isContext ? ' is-context' : ''}${isOnRoute ? ' is-route' : ''}${hasShift ? ' has-shift' : ''}`}
               onClick={() => onPlayNote(location.midi)}
               onKeyDown={(event) => handleMarkerKey(event, location.midi)}
             >
