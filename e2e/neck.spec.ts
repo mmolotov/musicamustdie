@@ -216,8 +216,19 @@ test('переключатель дисциплин: адрес, круг и в�
   await expect(page.locator('.circle-panel')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Тональности', exact: true })).toHaveAttribute('aria-pressed', 'true')
 
+  // Переключатель стоит над панелями и не двигается: две дисциплины раскладывают
+  // страницу по-разному, и кнопка не должна уезжать из-под курсора.
+  const spots = async () => [
+    await page.getByRole('button', { name: 'Тональности', exact: true }).boundingBox(),
+    await page.getByRole('button', { name: 'Гриф', exact: true }).boundingBox(),
+  ]
+  const before = await spots()
+  const panel = await page.locator('.details-panel').boundingBox()
+  expect(before[1]?.y ?? 0).toBeLessThan(panel?.y ?? 0)
+
   await page.getByRole('button', { name: 'Гриф', exact: true }).click()
   await expect(page).toHaveURL(/practice=neck/)
+  expect(await spots()).toEqual(before)
   await expect(page).not.toHaveURL(/minorVariant/)
   await expect(page.locator('.circle-panel')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Ноты на грифе' })).toBeVisible()
@@ -227,6 +238,7 @@ test('переключатель дисциплин: адрес, круг и в�
   await page.getByRole('button', { name: 'Тональности', exact: true }).click()
   await expect(page).toHaveURL(/practice=1/)
   await expect(page.locator('.circle-panel')).toBeVisible()
+  expect(await spots()).toEqual(before)
 
   await page.getByRole('button', { name: 'Выйти из тренировки' }).click()
   await expect(page.getByRole('button', { name: /Гамма и TAB/ })).toBeVisible()

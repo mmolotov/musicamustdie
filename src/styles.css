@@ -2069,7 +2069,9 @@ footer {
   color: #8f9994;
 }
 
-.segmented button:hover:not(:disabled) {
+/* Not the active one: the pointer is still over a segment right after it was
+   clicked, and a hover tint there would make the choice look unmade. */
+.segmented button:hover:not(:disabled):not(.is-active) {
   color: #dbe4de;
   background: rgba(255, 255, 255, 0.045);
 }
@@ -3770,11 +3772,11 @@ footer {
   padding-bottom: 22px;
 }
 
-/* The drill switch joins the key badge and the instrument controls on one
-   line; on a narrow panel the line is allowed to break instead of overflowing. */
-.details-hero__topline--practice {
-  flex-wrap: wrap;
-  row-gap: 12px;
+/* The drill switch sits above the panels, at the same spot in both drills:
+   inside a panel it moved whenever the layout under it changed. */
+.practice-drills {
+  display: flex;
+  margin-bottom: 18px;
 }
 
 .neck-trainer {

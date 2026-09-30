@@ -182,6 +182,26 @@ export default function App() {
       </header>
 
       <main>
+        {/* Above both layouts and outside either of them: the two drills lay
+            the page out differently, and a switch that lived inside a panel
+            would jump from under the cursor on every click. */}
+        {practiceActive && (
+          <div className="practice-drills">
+            <div className="segmented" role="group" aria-label={tr('practice.drillAria')}>
+              {DRILLS.map((drill) => (
+                <button
+                  type="button"
+                  key={drill}
+                  className={shareState.drill === drill ? 'is-active' : ''}
+                  aria-pressed={shareState.drill === drill}
+                  onClick={() => setShareState((state) => ({ ...state, drill }))}
+                >
+                  {tr(`practice.drill.${drill}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className={neckActive ? 'main-layout main-layout--solo' : 'main-layout'}>
           {!neckActive && (
             <section className="circle-panel" aria-label={tr('circle.panelAria')}>
@@ -202,33 +222,8 @@ export default function App() {
 
           <section className="details-panel" id="details-panel" aria-live="polite">
             <div className={neckActive ? 'details-hero details-hero--compact' : 'details-hero'}>
-              <div
-                className={
-                  practiceActive
-                    ? 'details-hero__topline details-hero__topline--practice'
-                    : 'details-hero__topline'
-                }
-              >
+              <div className="details-hero__topline">
                 <div className="topline-left">
-                {practiceActive && (
-                  <div
-                    className="segmented segmented--small"
-                    role="group"
-                    aria-label={tr('practice.drillAria')}
-                  >
-                    {DRILLS.map((drill) => (
-                      <button
-                        type="button"
-                        key={drill}
-                        className={shareState.drill === drill ? 'is-active' : ''}
-                        aria-pressed={shareState.drill === drill}
-                        onClick={() => setShareState((state) => ({ ...state, drill }))}
-                      >
-                        {tr(`practice.drill.${drill}`)}
-                      </button>
-                    ))}
-                  </div>
-                )}
                 {neckActive ? null : hintsHidden ? (
                   <span className="key-signature-badge is-hidden">
                     <i aria-hidden="true">?</i>
